@@ -1,0 +1,6 @@
+# local configuration and runtime data (never commit)
+web/config.js
+recorder/netfetch.list
+data/
+*.pyc
+__pycache__/

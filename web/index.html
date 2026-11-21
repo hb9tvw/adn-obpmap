@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADN {SRV} · OpenBridge Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#08111f;--bg2:#0d1a2e;--card:#101d33;--card2:#0c182b;--line:#22344f;--line2:#2c4466;
+  --txt:#e3edf8;--mut:#8aa3bf;--teal:#2dd4bf;--rx:#3cf07a;--tx:#f87171;--amber:#f5b041;
+  --ocean:#0a1d33;--land:#1d4062;--border:#4f7fa8;--label:#a9c6e2;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(1200px 600px at 70% -10%,#16345a 0%,transparent 60%),linear-gradient(180deg,var(--bg2),var(--bg));
+  color:var(--txt);font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+a{color:inherit}
+/* top bar */
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 24px;background:rgba(9,18,33,.85);
+  border-bottom:1px solid var(--line);backdrop-filter:blur(6px);position:sticky;top:0;z-index:1000}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:22px;color:var(--teal);letter-spacing:.2px;text-decoration:none}
+.brand .lg{display:inline-flex;font-weight:800;font-size:15px;letter-spacing:1px;padding:4px 8px;border-radius:7px;
+  background:linear-gradient(90deg,#1e40af 0 33%,#16a34a 33% 66%,#dc2626 66%);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+nav a{text-decoration:none;color:var(--mut);font-weight:600;font-size:14px;padding:7px 12px;border-radius:8px;border:1px solid transparent}
+nav a:hover{color:var(--txt);background:rgba(255,255,255,.04)}
+nav a.on{color:var(--teal);border-color:rgba(45,212,191,.45);background:rgba(45,212,191,.08)}
+.banner{text-align:center;margin:18px 24px 0}
+.banner img{max-width:min(680px,100%);height:auto;display:inline-block;filter:drop-shadow(0 6px 18px rgba(0,0,0,.45))}
+.blogo{height:46px;width:auto;display:block;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5))}
+@media (max-width:700px){.blogo{height:36px}}
+/* ticker */
+.ticker{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:16px 24px 0;padding:10px 16px;border-radius:10px;
+  background:linear-gradient(90deg,rgba(16,29,51,.95),rgba(12,24,43,.95));border:1px solid var(--line);
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;color:var(--rx)}
+.ticker span{white-space:nowrap}
+.ticker .sep{color:var(--amber)}
+.ticker .m{color:var(--mut)}
+.live{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:#64748b;display:inline-block}
+.dot.on{background:var(--rx);box-shadow:0 0 8px var(--rx);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.45}}
+main{padding:16px 24px 8px}
+.card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);margin-bottom:18px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-h h2{margin:0;font-size:17px;font-weight:700}
+.card-h h2 small{color:var(--mut);font-weight:500}
+.pills{display:flex;gap:10px;margin:0 auto}
+.pill{min-width:110px;text-align:center;padding:7px 16px;border-radius:9px;font-weight:700;font-size:14px;border:1.5px solid;letter-spacing:.3px}
+.p-rx{color:var(--rx);border-color:rgba(60,240,122,.7);background:rgba(60,240,122,.08)}
+.p-tx{color:var(--tx);border-color:rgba(248,113,113,.7);background:rgba(248,113,113,.08)}
+.pill.hot{box-shadow:0 0 14px currentColor}
+.btn{background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--txt);border-radius:8px;padding:7px 10px;cursor:pointer;font:inherit;font-size:13px}
+.btn:hover{background:rgba(255,255,255,.1)}
+.mapwrap{position:relative;padding:14px}
+#map{height:66vh;min-height:380px;border-radius:12px;border:1px solid var(--line2);background:var(--ocean)}
+.mapwrap:fullscreen{background:var(--bg);padding:10px}
+.mapwrap:fullscreen #map{height:calc(100vh - 20px)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:0 18px 14px;color:var(--mut);font-size:12.5px}
+.legend i{display:inline-block;width:22px;height:0;border-top:2.5px dashed;vertical-align:middle;margin-right:6px}
+.legend .lg-rx{color:var(--rx)}.legend .lg-tx{color:var(--tx)}
+.legend .fo{display:inline-block;width:14px;height:10px;border-radius:2px;background:#5b6b80;margin-right:6px;vertical-align:middle}
+.credit{margin-left:auto}
+/* markers */
+.flag{display:flex;align-items:center;justify-content:center}
+.leaflet-marker-pane .flag img{width:26px!important;height:auto!important;border-radius:3px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.55),0 2px 6px rgba(0,0,0,.7)}
+.leaflet-marker-pane .flag.off img{filter:grayscale(1) brightness(.55);opacity:.65}
+.leaflet-marker-pane .flag.act img{box-shadow:0 0 0 2px var(--amber),0 0 12px var(--amber)}
+.leaflet-marker-pane .home img{width:32px!important;box-shadow:0 0 0 2px #fff,0 0 16px var(--teal)}
+.halo{width:46px;height:46px;border-radius:50%;border:2px solid var(--teal);opacity:.0;animation:halo 2.4s ease-out infinite}
+@keyframes halo{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.4);opacity:0}}
+/* server pins: small flag + server number */
+.pin{display:flex;align-items:center;justify-content:center;gap:6px;height:26px;border-radius:13px;padding:0 4px;background:rgba(9,22,40,.95);
+  border:1.5px solid #5f8fb8;font:700 11.5px "JetBrains Mono",ui-monospace,monospace;color:var(--txt);white-space:nowrap;
+  box-shadow:0 2px 6px rgba(0,0,0,.6);cursor:pointer}
+.leaflet-marker-pane .pin img{width:24px!important;height:auto!important;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.45)}
+.pin.home{height:30px;border-radius:15px;font-size:13px;border:2px solid var(--teal);box-shadow:0 0 14px rgba(45,212,191,.75)}
+.leaflet-marker-pane .pin.home img{width:28px!important}
+.pin.off{opacity:.5;filter:grayscale(1)}
+.pin.rx{border-color:var(--rx);color:var(--rx);box-shadow:0 0 10px rgba(60,240,122,.9);animation:blinkb 1s infinite}
+.pin.tx{border-color:var(--tx);color:#ffb4b4;box-shadow:0 0 10px rgba(248,113,113,.9);animation:blinkb 1s infinite}
+@keyframes blinkb{50%{box-shadow:0 0 2px transparent}}
+/* country labels */
+.cl{color:var(--label);font-size:9.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;white-space:nowrap;
+  text-shadow:0 0 3px #0a1d33,0 0 2px #0a1d33;pointer-events:none;transform:translate(-50%,-50%);opacity:.85}
+/* tooltips with leader lines */
+.leaflet-tooltip.tip{background:rgba(6,14,26,.95);color:var(--txt);border:1.5px solid var(--amber);border-radius:7px;
+  font-size:12px;line-height:1.55;padding:6px 10px;box-shadow:0 6px 16px rgba(0,0,0,.55);font-weight:500}
+.leaflet-tooltip.tip:before{display:none}
+.leaflet-tooltip.tip:after{content:"";position:absolute;background:var(--amber)}
+.leaflet-tooltip-top.tip:after{left:50%;top:100%;width:1.5px;height:16px}
+.leaflet-tooltip-bottom.tip:after{left:50%;bottom:100%;width:1.5px;height:16px}
+.leaflet-tooltip-left.tip:after{top:50%;left:100%;height:1.5px;width:16px}
+.leaflet-tooltip-right.tip:after{top:50%;right:100%;height:1.5px;width:16px}
+.leaflet-tooltip-center.tip:after{display:none}
+.lead{stroke:var(--amber);stroke-width:1.5;fill:none;opacity:.9}
+.leaflet-tooltip.tip.idle{border-color:var(--line2)}
+.leaflet-tooltip.tip.idle:after{background:var(--line2)}
+.tip b{display:block;font-weight:700;border-bottom:1px solid #2a4363;margin-bottom:3px;padding-bottom:2px;white-space:nowrap}
+.tip .r{white-space:nowrap}
+.rx{color:var(--rx);font-weight:700}.tx{color:var(--tx);font-weight:700}
+.cs{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:700;letter-spacing:.2px}
+/* flows */
+.flow{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-dasharray:8 10;animation:dash 1s linear infinite}
+.flow-rx{stroke:var(--rx);filter:drop-shadow(0 0 3px rgba(60,240,122,.8))}
+.flow-tx{stroke:var(--tx);filter:drop-shadow(0 0 3px rgba(248,113,113,.8))}
+@keyframes dash{to{stroke-dashoffset:-18}}
+.leaflet-container{font:inherit;background:var(--ocean)}
+.leaflet-bar a{background:#13243d;color:var(--txt);border-color:var(--line2)}
+.leaflet-bar a:hover{background:#1b3150}
+.leaflet-control-attribution{display:none}
+/* table */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:10px 18px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.6px;background:rgba(255,255,255,.02)}
+tr:last-child td{border-bottom:none}
+tr.act td{background:rgba(245,176,65,.05)}
+td img{width:22px;border-radius:2px;vertical-align:middle;margin-right:8px;box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+.st{display:inline-flex;align-items:center;gap:7px;font-weight:600}
+.st.on{color:var(--rx)}.st.off{color:#94a3b8}
+.st .dot{width:8px;height:8px}
+.st.on .dot{background:var(--rx);box-shadow:0 0 6px var(--rx)}
+.bd{display:inline-block;padding:2px 8px;border-radius:6px;margin:2px 6px 2px 0;font-size:12.5px;border:1px solid}
+.bd.rx{border-color:rgba(60,240,122,.5);background:rgba(60,240,122,.07);font-weight:500;color:var(--txt)}
+.bd.tx{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.07);font-weight:500;color:var(--txt)}
+.bd em{font-style:normal;font-weight:700;margin-right:4px}
+.bd.rx em{color:var(--rx)}.bd.tx em{color:var(--tx)}
+.mut{color:var(--mut)}
+/* activity & flows */
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--mut);font:600 12.5px inherit;font-family:inherit;padding:6px 11px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button.on{background:rgba(45,212,191,.14);color:var(--teal)}
+.seg button:hover{color:var(--txt)}
+.note{color:var(--mut);font-size:12px;padding:10px 18px 0}
+.net{margin:12px 18px 6px;padding:12px 14px 6px;border:1px solid var(--line2);border-radius:12px;background:rgba(4,12,24,.55)}
+.net-h,.oc-h{display:flex;align-items:center;gap:12px;font-size:13px}
+.net-h b{font-size:14px}
+.net-c{position:relative;height:150px;margin-top:6px}
+.mc{display:block;width:100%;height:100%}
+.mc .ax{stroke:#35506f;stroke-width:1;vector-effect:non-scaling-stroke}
+.mc .a-rx{fill:rgba(60,240,122,.18)}.mc .a-tx{fill:rgba(248,113,113,.18)}
+.mc .l-rx{fill:none;stroke:var(--rx);stroke-width:1.6;vector-effect:non-scaling-stroke}
+.mc .l-tx{fill:none;stroke:var(--tx);stroke-width:1.6;vector-effect:non-scaling-stroke}
+.ticks{position:relative;height:18px;color:var(--mut);font-size:11px}
+.ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.hl{position:absolute;top:0;bottom:0;width:1px;background:var(--amber);display:none;pointer-events:none}
+.hv{position:absolute;top:4px;display:none;pointer-events:none;background:rgba(6,14,26,.95);border:1px solid var(--amber);border-radius:6px;padding:3px 8px;font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;padding:8px 18px 16px}
+.oc{border:1px solid var(--line);border-radius:10px;padding:9px 12px 6px;background:rgba(255,255,255,.015)}
+.oc.idle{opacity:.55}
+.oc-h .nm{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oc-h .v{font-size:12px;font-weight:700;white-space:nowrap}
+.oc-c{height:58px;margin-top:5px}
+.spin{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px 0 4px;border-radius:11px;border:1.5px solid #5f8fb8;
+  font:700 11px "JetBrains Mono",ui-monospace,monospace;background:rgba(9,22,40,.95)}
+.spin img{width:20px;border-radius:2px}
+.spin.off{opacity:.5;filter:grayscale(1)}
+#flows{padding:6px 18px 16px}
+#flows svg{display:block;width:100%;height:auto}
+#flows .rb{transition:opacity .15s}
+#flows svg.dim .rb{opacity:.12}#flows svg.dim .rb.hi{opacity:1}
+#flows text{fill:var(--txt);font-size:13px;font-family:inherit}
+#flows text.sm{fill:var(--mut);font-size:11.5px}
+.pad{padding:18px}
+footer{color:var(--mut);font-size:12px;text-align:center;padding:2px 16px 22px}
+@media (max-width:700px){
+  .top{padding:8px 10px;gap:8px;flex-wrap:nowrap}.brand{font-size:17px;gap:6px}.blogo{height:30px!important}
+  nav{margin-left:auto;width:auto;flex-wrap:nowrap;gap:4px}nav a{font-size:12px;padding:5px 8px;white-space:nowrap}
+  .ticker{margin:12px 10px 0;font-size:12px}main{padding:12px 10px 4px}
+  .mapwrap{padding:8px}#map{height:56vh;min-height:320px}.pills{margin:0}.pill{min-width:84px}
+  th,td{padding:8px 10px}
+  .leaflet-tooltip.tip{font-size:11px;padding:4px 7px}
+}
+@media (max-width:700px){nav a.on{display:none}.blogo{height:auto!important;max-height:30px;max-width:44vw}.brand{font-size:16px}}
+@media (max-width:700px){.pin{height:18px;font-size:9.5px;gap:4px;padding:0 3px;border-width:1.2px}.leaflet-marker-pane .pin img{width:16px!important}.pin.home{height:22px;font-size:10.5px}.leaflet-marker-pane .pin.home img{width:20px!important}.halo{width:34px;height:34px}}
+</style>
+<style id="mobile-nav-fix">
+@media (max-width:700px){
+  html,body{overflow-x:hidden;max-width:100%}
+  .top{flex-wrap:wrap!important;row-gap:8px!important}
+  .top nav{flex:1 0 100%!important;width:100%!important;max-width:100%!important;margin-left:0!important;
+    display:flex!important;flex-wrap:nowrap!important;align-items:center;gap:2px!important;justify-content:flex-start!important}
+  .top nav a{font-size:13px!important;padding:6px 6px!important;white-space:nowrap;flex:none}
+  #langsel{margin-left:auto!important;width:92px!important;max-width:92px!important;min-width:0!important;font-size:12px!important;padding:5px 4px!important;flex:none}
+  html body header.top nav select#langsel{width:82px!important;max-width:82px!important;min-width:0!important;font-size:12px!important;padding:4px 2px!important;margin-left:auto!important;box-sizing:border-box!important}
+}
+</style>
+<link rel="manifest" href="/obpmap/manifest.webmanifest">
+<meta name="theme-color" content="#08111f">
+<link rel="apple-touch-icon" href="/obpmap/icon-192.png">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/obpmap/sw.js', {scope: '/obpmap/'}).catch(function(){});</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/" id="brand"><img class="blogo" src="/img/logo.png" alt="ADN Systems"><span>{SRV}</span></a>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/obpmap/" class="on">OpenBridge Map</a>
+    <a href="/obpmap/live/" id="navlive">🎧 ADN Live</a>
+  </nav>
+</header>
+
+<div class="ticker">
+  <span class="live"><span class="dot" id="dot"></span><span id="stt">connecting…</span></span>
+  <span class="sep">•</span><span>{FLAG} {COUNTRY} · {CITY}</span>
+  <span class="sep">•</span><span id="clk">UTC --:--:-- • {TZLABEL} --:--:--</span>
+  <span class="sep">•</span><span id="cnt" class="m">OBP --/--</span>
+</div>
+
+<main>
+  <div class="card">
+    <div class="card-h">
+      <h2>{SRV} ADN – {COUNTRY} <small>| OpenBridge Traffic</small></h2>
+      <div class="pills"><div class="pill p-rx" id="crx">RX 0</div><div class="pill p-tx" id="ctx">TX 0</div></div>
+      <button class="btn" id="fs" title="Fullscreen">⛶ Fullscreen</button>
+    </div>
+    <div class="mapwrap" id="mw"><div id="map"></div></div>
+    <div class="legend">
+      <span><i class="lg-rx"></i>RX – traffic received from OBP</span>
+      <span><i class="lg-tx"></i>TX – traffic sent to OBP</span>
+      <span><span class="fo"></span>OBP offline</span><span>Pins show the ADN server number</span>
+      <span class="credit">Map data © Natural Earth · Leaflet · adn-obpmap by HB9TVW</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>OpenBridge Activity <small>| <span class="rx">RX</span> received ▲ · <span class="tx">TX</span> sent ▼</small></h2>
+      <div class="ctl">
+        <div class="seg" id="metric"><button data-m="n" class="on">Streams</button><button data-m="t">Talk time</button></div>
+        <div class="seg" id="range"><button data-r="900">15 min</button><button data-r="3600" class="on">1 h</button><button data-r="10800">3 h</button><button data-r="21600">6 h</button><button data-r="43200">12 h</button><button data-r="86400">24 h</button></div>
+      </div>
+    </div>
+    <div class="note" id="actnote">loading history…</div>
+    <div id="act"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>OpenBridge Flows <small>| where each stream came from and where {SRV} forwarded it</small></h2></div>
+    <div class="note">Left: origin (OBP that sent the stream to {SRV}, or local users) · right: OBPs that received it · same time window as above · hover to highlight</div>
+    <div id="flows"><div class="mut pad">loading…</div></div>
+  </div>
+
+  <div id="healthcard"></div>
+
+  <div id="netcard"></div>
+
+  <div id="topscard"></div>
+
+  <div class="card">
+    <div class="card-h"><h2>OpenBridge <small>| links of ADN {SRV}</small></h2></div>
+    <div class="tw"><table>
+      <thead><tr><th>Country</th><th>Service</th><th>Network ID</th><th>Status</th><th>Active streams</th></tr></thead>
+      <tbody id="tb"><tr><td colspan="5" class="mut">waiting for data…</td></tr></tbody>
+    </table></div>
+  </div>
+</main>
+<footer>{FOOTER}</footer>
+
+<script src="config.js?v=1"></script>
+<script src="common.js?v=1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+(function(){
+const CFG=window.OBPMAP_CONFIG;
+const HOME={label:CFG.country+(CFG.homeNetworkId?' · '+CFG.homeNetworkId:''),sub:CFG.serverName+' · '+CFG.city,cc:CFG.cc,ll:[CFG.lat,CFG.lon]};
+// NETWORK_ID -> [cc, lat, lon, country, tooltip side]
+const LOC={
+  22210:['it',41.90,12.50,'Italy','left'],
+  22212:['it',45.46,9.19,'Italy','top'],
+  20220:['gr',37.98,23.73,'Greece','bottom'],
+  2861:['tr',39.93,32.86,'Turkey','right'],
+  60410:['ma',34.02,-6.84,'Morocco','left'],
+  21410:['es',40.42,-3.70,'Spain','left'],
+  70611:['sv',13.69,-89.22,'El Salvador','left'],
+  73010:['cl',-33.45,-70.67,'Chile','left'],
+  72410:['br',-15.79,-47.88,'Brazil','right'],
+  37010:['do',18.49,-69.93,'Dominican Rep.','top'],
+  71210:['cr',9.93,-84.08,'Costa Rica','bottom'],
+  50510:['au',-33.87,151.21,'Australia','top'],
+  72210:['ar',-34.60,-58.38,'Argentina','right'],
+  74810:['uy',-34.90,-56.16,'Uruguay','bottom']
+};
+const MCC={'202':['gr',37.98,23.73,'Greece'],'204':['nl',52.37,4.90,'Netherlands'],'206':['be',50.85,4.35,'Belgium'],
+  '208':['fr',48.86,2.35,'France'],'214':['es',40.42,-3.70,'Spain'],'222':['it',41.90,12.50,'Italy'],
+  '228':['ch',46.95,7.45,'Switzerland'],'232':['at',48.21,16.37,'Austria'],'234':['gb',51.51,-0.13,'United Kingdom'],
+  '262':['de',52.52,13.40,'Germany'],'268':['pt',38.72,-9.14,'Portugal'],'284':['bg',42.70,23.32,'Bulgaria'],
+  '286':['tr',39.93,32.86,'Turkey'],'302':['ca',45.42,-75.70,'Canada'],'310':['us',38.90,-77.04,'USA'],
+  '311':['us',38.90,-77.04,'USA'],'312':['us',38.90,-77.04,'USA'],'313':['us',38.90,-77.04,'USA'],
+  '314':['us',38.90,-77.04,'USA'],'315':['us',38.90,-77.04,'USA'],'316':['us',38.90,-77.04,'USA'],
+  '334':['mx',19.43,-99.13,'Mexico'],'370':['do',18.49,-69.93,'Dominican Rep.'],'505':['au',-33.87,151.21,'Australia'],
+  '520':['th',13.76,100.50,'Thailand'],'604':['ma',34.02,-6.84,'Morocco'],'706':['sv',13.69,-89.22,'El Salvador'],
+  '712':['cr',9.93,-84.08,'Costa Rica'],'722':['ar',-34.60,-58.38,'Argentina'],'724':['br',-15.79,-47.88,'Brazil'],
+  '730':['cl',-33.45,-70.67,'Chile'],'748':['uy',-34.90,-56.16,'Uruguay']};
+Object.assign(LOC,CFG.locations||{});
+const OFFS={top:[0,-24],bottom:[0,24],left:[-24,0],right:[24,0]};
+const FOFFS={top:[0,-70],bottom:[0,70],left:[-70,0],right:[70,0]};
+// servers stacked right above / below the hub pill
+const SM=window.innerWidth<700;
+// OBPs of servers at the same place as this one (config: stacked) are drawn right above / below the hub pill
+const SAT={};(CFG.stacked||[]).forEach((nid,i)=>{const k=Math.floor(i/2)+1,s=i%2?1:-1;SAT[nid]={dx:0,dy:s*k*(SM?24:32),dir:'left'};});
+const SATH=Object.values(SAT).reduce((m,s)=>Math.max(m,Math.abs(s.dy)),0);
+const PH=SM?18:26, HPH=SM?22:30;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const flagUrl=cc=>'https://flagcdn.com/w40/'+cc+'.png';
+const shortId=nid=>{const s=String(nid);return s.length===5?s.slice(0,4):s;};
+const pillW=(txt,home)=>SM?(home?32+7*txt.length:28+6.2*txt.length):(home?48+8.5*txt.length:42+7.5*txt.length);
+function locate(name,nid){
+  const s=SAT[nid]; if(s) return {cc:HOME.cc,ll:HOME.ll,country:CFG.country,dir:s.dir,sat:s};
+  const l=LOC[nid]; if(l) return {cc:l[0],ll:[l[1],l[2]],country:l[3],dir:l[4]};
+  const m=MCC[String(nid).slice(0,3)];
+  return m?{cc:m[0],ll:[m[1],m[2]],country:m[3],dir:'top'}:null;
+}
+function pinIcon(cc,txt,cls,d,dir,home){
+  const w=pillW(txt,home),hh=home?HPH:PH;
+  return L.divIcon({className:'',html:'<div class="pin '+(home?'home ':'')+cls+'" style="width:'+w+'px"><img src="'+flagUrl(cc)+'" alt="">'+esc(txt)+'</div>',
+    iconSize:[w,hh],iconAnchor:[w/2-d.dx,hh/2-d.dy],tooltipAnchor:[d.dx,d.dy]});
+}
+/* place each live box around its pin (8 directions, 3 distances) avoiding the map edge, other boxes and pins */
+function ov(a,b){const x=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x),y=Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y);return x>0&&y>0?x*y:0;}
+function cands(t){const n=t.n,hw=n.w/2,hh=PH/2,tw=t.tw/2,th=t.th/2,out=[];
+  const pref=n.loc.dir;
+  for(const g of [16,46,86]){
+    const D={top:[0,-(hh+g+th)],bottom:[0,hh+g+th],left:[-(hw+g+tw),0],right:[hw+g+tw,0],
+      tl:[-(tw+g*.6),-(hh+g*.6+th)],tr:[tw+g*.6,-(hh+g*.6+th)],bl:[-(tw+g*.6),hh+g*.6+th],br:[tw+g*.6,hh+g*.6+th]};
+    const ks=[pref].concat(['top','bottom','left','right','tl','tr','bl','br'].filter(k=>k!==pref));
+    ks.forEach((k,i)=>out.push({off:D[k],cost:g*3+i*12}));}
+  return out;}
+function layoutTips(items,pins){
+  const sz=map.getSize(),placed=[];
+  items.sort((a,b)=>(b.n.loc.sat?1:0)-(a.n.loc.sat?1:0)||b.nl-a.nl);
+  for(const t of items){let best=null,bs=1e15;
+    for(const c of cands(t)){const r={x:t.c.x+c.off[0]-t.tw/2,y:t.c.y+c.off[1]-t.th/2,w:t.tw,h:t.th};let s=c.cost;
+      if(r.x<4||r.y<4||r.x+r.w>sz.x-4||r.y+r.h>sz.y-4) s+=1e7;
+      for(const p of placed) s+=ov(r,p)*6;
+      for(const p of pins) if(p.n!==t.n) s+=ov(r,p)*3;
+      if(s<bs){bs=s;best={off:c.off,r:r};}}
+    t.off=[Math.round(best.off[0]),Math.round(best.off[1])]; t.r=best.r; placed.push({x:best.r.x-4,y:best.r.y-4,w:best.r.w+8,h:best.r.h+8});}
+}
+/* leader line from pin edge to box edge, in screen space */
+function edgePt(cx,cy,hw,hh,tx,ty){const dx=tx-cx,dy=ty-cy;if(!dx&&!dy)return [cx,cy];
+  const s=Math.min(dx?hw/Math.abs(dx):1e9,dy?hh/Math.abs(dy):1e9);return [cx+dx*s,cy+dy*s];}
+/* push overlapping pills apart (screen space); hub and its stacked servers stay fixed */
+function declutter(list){
+  const hp=map.latLngToContainerPoint(HOME.ll), hw=pillW(CFG.serverId,true);
+  // hub + stacked servers form one fixed block
+  const it=[{x:hp.x,y:hp.y,w:hw,h:HPH+2*SATH,fix:true}];
+  for(const n of list){ if(n.loc.sat) continue; const p=map.latLngToContainerPoint(n.loc.ll);
+    it.push({x:p.x,y:p.y,x0:p.x,y0:p.y,w:n.w,h:PH,fix:false,n:n});}
+  for(let k=0;k<60;k++){let moved=false;
+    for(let i=0;i<it.length;i++)for(let j=i+1;j<it.length;j++){const a=it[i],b=it[j]; if(a.fix&&b.fix) continue;
+      const dx=b.x-a.x,dy=b.y-a.y,ox=(a.w+b.w)/2+4-Math.abs(dx),oy=(a.h+b.h)/2+3-Math.abs(dy);
+      if(ox<=0||oy<=0) continue; moved=true;
+      const wa=a.fix?0:b.fix?1:.5, wb=1-wa;
+      if(oy<=ox){const s=dy>=0?1:-1; a.y-=s*oy*wa; b.y+=s*oy*wb;} else {const s=dx>=0?1:-1; a.x-=s*ox*wa; b.x+=s*ox*wb;}}
+    if(!moved) break;}
+  for(const o of it) if(o.n) o.n.d={dx:Math.round(o.x-o.x0),dy:Math.round(o.y-o.y0)};
+  for(const n of list) if(n.loc.sat) n.d={dx:n.loc.sat.dx,dy:n.loc.sat.dy};
+}
+function curve(a,b){
+  const y1=a[0],x1=a[1],y2=b[0],x2=b[1],dx=x2-x1,dy=y2-y1,d=Math.hypot(dx,dy),k=d<15?0.35:0.2;
+  const cx=(x1+x2)/2-dy*k,cy=(y1+y2)/2+dx*k,p=[];
+  for(let i=0;i<=40;i++){const t=i/40,u=1-t;p.push([u*u*y1+2*u*t*cy+t*t*y2,u*u*x1+2*u*t*cx+t*t*x2]);}
+  return p;
+}
+
+/* ---------- map ---------- */
+const WORLD=[[-48,-125],[66,128]];
+function fitW(){const s=map.getSize();if(!s.x)return;if(SM){map.setView([14,-30],1.5);return;}let z=Math.log2((s.x-20)*360/(262*256));z=Math.max(1.5,Math.floor(z*4)/4);map.setView([22,4],z);}
+const map=L.map('map',{minZoom:1.5,maxZoom:7,zoomSnap:0.25,zoomDelta:0.5,worldCopyJump:false,
+  maxBounds:[[-75,-200],[85,220]],maxBoundsViscosity:0.8,attributionControl:false});
+fitW();
+map.createPane('land').style.zIndex=250;
+map.createPane('labels').style.zIndex=350;
+const labelLayer=L.layerGroup().addTo(map); let labels=[];
+
+function ringArea(r){let a=0;for(let i=0,j=r.length-1;i<r.length;j=i++)a+=(r[j][0]+r[i][0])*(r[j][1]-r[i][1]);return Math.abs(a/2);}
+function ringCentroid(r){let x=0,y=0,a=0;for(let i=0,j=r.length-1;i<r.length;j=i++){const f=r[j][0]*r[i][1]-r[i][0]*r[j][1];x+=(r[j][0]+r[i][0])*f;y+=(r[j][1]+r[i][1])*f;a+=f;}
+  if(!a){return r[0];}a*=3;return [x/a,y/a];}
+const LABEL_FIX={'United States of America':'United States','Dem. Rep. Congo':'DR Congo','Central African Rep.':'C. African Rep.'};
+function drawLabels(){
+  labelLayer.clearLayers(); const z=map.getZoom(), min=z<2.25?260:z<3?90:z<4?22:z<5?5:0.8;
+  for(const L0 of labels){ if(L0.area<min) continue;
+    labelLayer.addLayer(L.marker(L0.ll,{pane:'labels',interactive:false,keyboard:false,
+      icon:L.divIcon({className:'',html:'<div class="cl">'+esc(L0.name)+'</div>',iconSize:[0,0]})}));}
+}
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json').then(r=>r.json()).then(t=>{
+  const fc=topojson.feature(t,t.objects.countries);
+  fc.features=fc.features.filter(f=>f.id!=='010');
+  const fixRing=r=>{if(r.some(c=>c[0]>170)&&r.some(c=>c[0]<-170))r.forEach(c=>{if(c[0]<0)c[0]+=360;});};
+  fc.features.forEach(f=>{const g=f.geometry;if(!g)return;
+    const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+    polys.forEach(p=>p.forEach(fixRing));
+    let best=null,ba=0,tot=0; polys.forEach(p=>{const a=ringArea(p[0]);tot+=a;if(a>ba){ba=a;best=p[0];}});
+    if(best){const c=ringCentroid(best);const nm=(f.properties&&f.properties.name)||'';
+      labels.push({name:LABEL_FIX[nm]||nm,ll:[c[1],c[0]],area:tot});}
+  });
+  L.geoJSON(fc,{pane:'land',interactive:false,style:{color:'#4f7fa8',weight:0.8,fillColor:'#1d4062',fillOpacity:1}}).addTo(map);
+  drawLabels(); map.on('zoomend',drawLabels);
+}).catch(()=>{});
+
+/* home node */
+L.marker(HOME.ll,{icon:L.divIcon({className:'',html:'<div class="halo"></div>',iconSize:[46,46],iconAnchor:[23,23]}),interactive:false,zIndexOffset:900}).addTo(map);
+const home=L.marker(HOME.ll,{icon:pinIcon(HOME.cc,CFG.serverId,'',{dx:0,dy:0},'top',true),zIndexOffset:1200}).addTo(map);
+home.bindTooltip('<b>'+HOME.label+'</b><span class="mut">'+HOME.sub+'</span>',{className:'tip idle',direction:'top',offset:[0,-(HPH/2+16)]});
+
+/* ---------- render ---------- */
+const nodes={}; let last=null;
+window.OBPMAP={map:map,nodes:nodes,home:HOME,get last(){return last;}};
+function streamLine(s,now){
+  const rx=s[0]==='RX';
+  return '<div class="r"><span class="'+(rx?'rx':'tx')+'">'+(rx?'RX':'TX')+'</span> '+(window.opFlag?window.opFlag(s[4]):'')+'<span class="cs">'+esc(s[1])+'</span> · TG '+esc(s[2])+
+    (s[3]?' <span class="mut">· '+Math.max(0,Math.round(now-s[3]))+'s</span>':'')+'</div>';
+}
+function render(ob){
+  const now=Date.now()/1000; let nrx=0,ntx=0,ncon=0,ntot=0; const rows=[], seen={}, todo=[];
+  for(const name of Object.keys(ob)){
+    const info=ob[name]||{}, nid=info.NETWORK_ID, loc=locate(name,nid);
+    const streams=Object.values(info.STREAMS||{}).sort((a,b)=>(a[0]===b[0]?0:a[0]==='RX'?-1:1));
+    const rx=streams.filter(s=>s[0]==='RX').length, tx=streams.length-rx;
+    nrx+=rx; ntx+=tx; ntot++; if(info.CONNECTED) ncon++; seen[name]=1;
+    const badges=streams.map(s=>'<span class="bd '+(s[0]==='RX'?'rx':'tx')+'"><em>'+(s[0]==='RX'?'RX':'TX')+'</em>'+(window.opFlag?window.opFlag(s[4]):'')+'<span class="cs">'+esc(s[1])+'</span> · TG '+esc(s[2])+'</span>').join('');
+    rows.push({k:(streams.length?0:info.CONNECTED?1:2),html:'<tr class="'+(streams.length?'act':'')+'"><td>'+(loc?'<img src="'+flagUrl(loc.cc)+'" alt="">'+esc(loc.country):'<span class="mut">—</span>')+
+      '</td><td>'+esc(name)+'</td><td>'+esc(nid)+'</td><td><span class="st '+(info.CONNECTED?'on':'off')+'"><span class="dot"></span>'+(info.CONNECTED?'Connected':'Offline')+
+      '</span></td><td>'+(badges||'<span class="mut">—</span>')+'</td></tr>'});
+    if(!loc) continue;
+    let n=nodes[name];
+    if(!n){const txt=shortId(nid); n=nodes[name]={m:L.marker(loc.ll,{zIndexOffset:loc.sat?1100:0,icon:pinIcon(loc.cc,txt,'',{dx:0,dy:0},loc.dir)}).addTo(map),
+      txt:txt,w:pillW(txt),loc:loc,line:null,lkey:'',ikey:'',perm:false,dir:'',d:{dx:0,dy:0}};}
+    todo.push({n,info,streams,rx,tx,name,nid});
+  }
+  declutter(todo.map(t=>t.n));
+  const wide=map.getSize().x>=620, pins=[], act=[];
+  const hp=map.latLngToContainerPoint(HOME.ll); pins.push({x:hp.x-35,y:hp.y-12,w:70,h:24,n:null});
+  for(const t of todo){const p=map.latLngToContainerPoint(t.n.loc.ll);t.c={x:p.x+t.n.d.dx,y:p.y+t.n.d.dy};
+    pins.push({x:t.c.x-t.n.w/2,y:t.c.y-PH/2,w:t.n.w,h:PH,n:t.n});
+    if(t.streams.length&&wide){const ml=Math.max(...t.streams.map(s=>(s[1]+s[2]).length+16));
+      t.nl=t.streams.length; t.tw=Math.max((t.n.loc.country.length+8)*7.6,ml*6.9)+24; t.th=38+18.6*t.nl; act.push(t);}}
+  layoutTips(act,pins);
+  for(const t of todo){const {n,info,streams,rx,tx,name,nid}=t;
+    const loc=n.loc, cls=!info.CONNECTED?'off':rx?'rx':tx?'tx':'';
+    const want=streams.length>0&&wide, okey=want?t.off.join(','):'idle';
+    const ikey=cls+'|'+n.d.dx+'|'+n.d.dy;
+    if(ikey!==n.ikey){n.m.setIcon(pinIcon(loc.cc,n.txt,cls,n.d,'center'));n.ikey=ikey;}
+    // leader line
+    const lk2=want?okey+'|'+t.c.x.toFixed(0)+'|'+t.c.y.toFixed(0):'';
+    if(lk2!==n.ldk){ if(n.lead){map.removeLayer(n.lead);n.lead=null;}
+      if(want){const bx=t.c.x+t.off[0],by=t.c.y+t.off[1];
+        const a=edgePt(t.c.x,t.c.y,n.w/2,PH/2,bx,by),b=edgePt(bx,by,t.tw/2,t.th/2,t.c.x,t.c.y);
+        n.lead=L.polyline([map.containerPointToLatLng(a),map.containerPointToLatLng(b)],{className:'lead',interactive:false}).addTo(map);}
+      n.ldk=lk2;}
+    const kind=rx?'rx':(tx?'tx':''), lkey=kind+'|'+n.d.dx+'|'+n.d.dy+'|'+map.getZoom();
+    if(lkey!==n.lkey){
+      if(n.line){map.removeLayer(n.line);n.line=null;}
+      if(kind&&!loc.sat){const pp=map.latLngToContainerPoint(loc.ll);pp.x+=n.d.dx;pp.y+=n.d.dy;
+        const end=map.containerPointToLatLng(pp),p=curve(HOME.ll,[end.lat,end.lng]); if(kind==='rx')p.reverse();
+        n.line=L.polyline(p,{className:'flow flow-'+kind,interactive:false}).addTo(map);}
+      n.lkey=lkey;
+    }
+    const html='<b>'+esc(loc.country)+' · '+esc(nid)+'</b>'+(streams.length?streams.map(s=>streamLine(s,now)).join(''):'<span class="mut">'+esc(name)+' · '+(info.CONNECTED?'connected':'offline')+'</span>');
+    if(okey!==n.okey||!n.m.getTooltip()){
+      n.m.unbindTooltip();
+      if(want) n.m.bindTooltip(html,{className:'tip on-air',direction:'center',offset:t.off,permanent:true}).openTooltip();
+      else n.m.bindTooltip(html,{className:'tip'+(streams.length?'':' idle'),direction:'top',offset:[0,-(PH/2+16)]});
+      n.okey=okey;
+    } else n.m.setTooltipContent(html);
+  }
+  for(const name of Object.keys(nodes)){ if(!seen[name]){const n=nodes[name]; map.removeLayer(n.m); if(n.line)map.removeLayer(n.line); if(n.lead)map.removeLayer(n.lead); delete nodes[name];} }
+  $('crx').textContent='RX '+nrx; $('ctx').textContent='TX '+ntx;
+  $('crx').classList.toggle('hot',nrx>0); $('ctx').classList.toggle('hot',ntx>0);
+  $('cnt').textContent='OBP connected '+ncon+'/'+ntot;
+  rows.sort((a,b)=>a.k-b.k); $('tb').innerHTML=rows.map(r=>r.html).join('');
+}
+map.on('zoomend moveend',()=>{ if(last) render(last); });
+setInterval(()=>{ if(last) render(last); },700);
+
+/* ---------- activity & flows (history written by obp-recorder) ---------- */
+let HI=null, RANGE=3600, METRIC='n';
+const tz={timeZone:CFG.timeZone,hour:'2-digit',minute:'2-digit'};
+const fmtT=ts=>new Date(ts*1000).toLocaleTimeString(CFG.locale,tz);
+const fmtD=ts=>new Date(ts*1000).toLocaleString(CFG.locale,{timeZone:CFG.timeZone,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const fmtV=v=>METRIC==='n'?String(Math.round(v)):(v>=3600?(v/3600).toFixed(1)+' h':v>=60?Math.round(v/60)+' min':Math.round(v)+' s');
+const sumA=a=>a.reduce((x,y)=>x+y,0);
+function nodeInfo(name){
+  if(name==='LOCAL') return {cc:HOME.cc,txt:CFG.serverId,label:CFG.serverName+' · local users'};
+  const o=(HI&&HI.obps[name])||{}, loc=locate(name,o.nid);
+  return {cc:loc?loc.cc:'un',txt:shortId(o.nid||''),label:(loc?loc.country:name.replace(/^OBP-/,''))+' · '+(o.nid||'?'),up:o.up};
+}
+function series(){
+  const step=HI.step, now=Math.floor(Date.now()/1000/step)*step, n=Math.round(RANGE/step);
+  const g=Math.max(1,Math.ceil(n/240)), m=Math.ceil(n/g), t0=now-(n-1)*step, vi=METRIC==='n'?[0,1]:[2,3];
+  const per={}, tot={rx:new Array(m).fill(0),tx:new Array(m).fill(0)}, flows={};
+  for(const [t,o,f] of HI.b){ if(t<t0||t>now) continue; const i=Math.min(m-1,Math.floor((t-t0)/step/g));
+    for(const name in o){const v=o[name];
+      const p=per[name]||(per[name]={rx:new Array(m).fill(0),tx:new Array(m).fill(0)});
+      p.rx[i]+=v[vi[0]]; p.tx[i]+=v[vi[1]]; tot.rx[i]+=v[vi[0]]; tot.tx[i]+=v[vi[1]];}
+    for(const k in f){const a=flows[k]||(flows[k]=[0,0]);a[0]+=f[k][0];a[1]+=f[k][1];}}
+  return {t0,now,step,g,m,per,tot,flows};
+}
+function mirror(rx,tx,W,Hh,max){
+  const n=rx.length, x=i=>(n<2?0:i*W/(n-1)).toFixed(1), mid=Hh/2, k=max?(mid-2)/max:0;
+  const up=rx.map((v,i)=>x(i)+','+(mid-v*k).toFixed(1)).join(' L'), dn=tx.map((v,i)=>x(i)+','+(mid+v*k).toFixed(1)).join(' L');
+  return '<svg class="mc" viewBox="0 0 '+W+' '+Hh+'" preserveAspectRatio="none">'+
+    '<path class="a-rx" d="M0,'+mid+' L'+up+' L'+W+','+mid+'Z"/><path class="a-tx" d="M0,'+mid+' L'+dn+' L'+W+','+mid+'Z"/>'+
+    '<line class="ax" x1="0" y1="'+mid+'" x2="'+W+'" y2="'+mid+'"/>'+
+    '<path class="l-rx" d="M'+up+'"/><path class="l-tx" d="M'+dn+'"/></svg>';
+}
+function spin(ni,off){return '<span class="spin'+(off?' off':'')+'"><img src="'+flagUrl(ni.cc)+'" alt="">'+esc(ni.txt)+'</span>';}
+function drawHist(){
+  if(!HI) return; const S=series(), bs=S.g*S.step;
+  $('actnote').textContent='Height = '+(METRIC==='n'?'number of streams':'talk time')+' per '+(bs>=60?(bs/60)+' min':bs+' s')+
+    ' · each OBP on its own scale · recording since '+fmtD(HI.since)+' · updated '+fmtT(HI.updated);
+  const max=Math.max(1,...S.tot.rx,...S.tot.tx);
+  let ticks=''; for(let i=0;i<=5;i++){const p=i/5; ticks+='<span style="left:'+(p*100)+'%">'+fmtT(S.t0+p*(S.now-S.t0))+'</span>';}
+  let html='<div class="net"><div class="net-h"><b>Whole network</b><span class="rx">RX '+fmtV(sumA(S.tot.rx))+'</span><span class="tx">TX '+fmtV(sumA(S.tot.tx))+
+    '</span><span class="mut" style="margin-left:auto;font-size:12px">peak '+fmtV(max)+'</span></div><div class="net-c" id="netc">'+mirror(S.tot.rx,S.tot.tx,1000,150,max)+
+    '<div class="hl" id="hl"></div><div class="hv" id="hv"></div></div><div class="ticks">'+ticks+'</div></div>';
+  const names=Object.keys(HI.obps); Object.keys(S.per).forEach(n=>{if(!names.includes(n))names.push(n);});
+  const act=n=>S.per[n]?sumA(S.per[n].rx)+sumA(S.per[n].tx):0;
+  names.sort((a,b)=>act(b)-act(a)||a.localeCompare(b));
+  html+='<div class="grid">';
+  for(const n of names){const p=S.per[n]||{rx:new Array(S.m).fill(0),tx:new Array(S.m).fill(0)}, ni=nodeInfo(n);
+    const pm=Math.max(1,...p.rx,...p.tx), r=sumA(p.rx), t=sumA(p.tx);
+    html+='<div class="oc'+(r+t?'':' idle')+'"><div class="oc-h">'+spin(ni,ni.up===false)+'<span class="nm" title="'+esc(n)+'">'+esc(ni.label)+
+      '</span><span class="v rx">RX '+fmtV(r)+'</span><span class="v tx">TX '+fmtV(t)+'</span></div><div class="oc-c">'+mirror(p.rx,p.tx,600,58,pm)+'</div></div>';}
+  $('act').innerHTML=html+'</div>';
+  const c=$('netc'); c.onmousemove=e=>{const r=c.getBoundingClientRect(),fx=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),i=Math.round(fx*(S.m-1));
+    const x=(S.m<2?0:i/(S.m-1))*r.width; $('hl').style.display='block'; $('hl').style.left=x+'px';
+    const hv=$('hv'); hv.style.display='block'; hv.innerHTML=fmtT(S.t0+i*bs)+' · <span class="rx">RX '+fmtV(S.tot.rx[i])+'</span> · <span class="tx">TX '+fmtV(S.tot.tx[i])+'</span>';
+    hv.style.left=Math.min(Math.max(0,x-hv.offsetWidth/2),r.width-hv.offsetWidth)+'px';};
+  c.onmouseleave=()=>{$('hl').style.display='none';$('hv').style.display='none';};
+  drawFlows(S);
+}
+function drawFlows(S){
+  const ks=Object.keys(S.flows), vi=METRIC==='n'?0:1;
+  if(!ks.length){$('flows').innerHTML='<div class="mut pad">No forwarded traffic recorded in this time window yet.</div>';return;}
+  const L={},Rr={}; let total=0;
+  ks.forEach(k=>{const [a,b]=k.split('>'),v=S.flows[k][vi]||0; L[a]=(L[a]||0)+v; Rr[b]=(Rr[b]||0)+v; total+=v;});
+  if(!total){$('flows').innerHTML='<div class="mut pad">No forwarded traffic recorded in this time window yet.</div>';return;}
+  const ln=Object.keys(L).sort((a,b)=>L[b]-L[a]), rn=Object.keys(Rr).sort((a,b)=>Rr[b]-Rr[a]);
+  const W=1000, top=46, nh=Math.max(ln.length,rn.length), Hh=Math.max(300,nh*40+top+20), gap=10;
+  const xL=250, xR=738, bw=12;
+  function lay(names,vals){const usable=Hh-top-20-gap*(names.length-1),o={};let y=top;
+    names.forEach(n=>{const hh=Math.max(4,vals[n]/total*usable);o[n]={y,h:hh,off:0};y+=Math.max(hh+gap,40);});o._end=y;return o;}
+  const LP=lay(ln,L), RP=lay(rn,Rr), mx=(xL+bw+xR)/2;
+  let s='<svg viewBox="0 0 '+W+' '+Math.ceil(Math.max(Hh,LP._end,RP._end)+6)+'" id="fsvg"><defs><linearGradient id="fg" gradientUnits="userSpaceOnUse" x1="'+(xL+bw)+'" x2="'+xR+'" y1="0" y2="0">'+
+    '<stop offset="0" stop-color="#3cf07a" stop-opacity=".6"/><stop offset="1" stop-color="#f87171" stop-opacity=".6"/></linearGradient></defs>';
+  s+='<text x="'+(xL+bw/2)+'" y="22" text-anchor="middle" class="sm">ORIGIN · '+fmtV(total)+'</text><text x="'+(xR+bw/2)+'" y="22" text-anchor="middle" class="sm">FORWARDED TO</text>';
+  s+='<text x="'+mx+'" y="22" text-anchor="middle" style="font-weight:700;fill:#2dd4bf">'+esc(CFG.serverName)+'</text>';
+  ks.sort((a,b)=>{const [a1,a2]=a.split('>'),[b1,b2]=b.split('>');return (LP[a1].y-LP[b1].y)||(RP[a2].y-RP[b2].y);});
+  for(const k of ks){const [a,b]=k.split('>'),v=S.flows[k][vi]||0; if(!v) continue;
+    const hl=LP[a].h*v/L[a], hr=RP[b].h*v/Rr[b], y0=LP[a].y+LP[a].off, y1=RP[b].y+RP[b].off; LP[a].off+=hl; RP[b].off+=hr;
+    const x0=xL+bw, x1=xR;
+    s+='<path class="rb" data-a="'+esc(a)+'" data-b="'+esc(b)+'" fill="url(#fg)" d="M'+x0+','+y0.toFixed(1)+' C'+mx+','+y0.toFixed(1)+' '+mx+','+y1.toFixed(1)+' '+x1+','+y1.toFixed(1)+
+      ' L'+x1+','+(y1+hr).toFixed(1)+' C'+mx+','+(y1+hr).toFixed(1)+' '+mx+','+(y0+hl).toFixed(1)+' '+x0+','+(y0+hl).toFixed(1)+'Z"><title>'+
+      esc(nodeInfo(a).label+' → '+nodeInfo(b).label+': '+fmtV(v))+'</title></path>';}
+  for(const n of ln){const p=LP[n],ni=nodeInfo(n),cy=p.y+p.h/2;
+    s+='<g class="nd" data-a="'+esc(n)+'"><rect x="'+xL+'" y="'+p.y.toFixed(1)+'" width="'+bw+'" height="'+p.h.toFixed(1)+'" rx="3" fill="#3cf07a"/>'+
+      '<image href="'+flagUrl(ni.cc)+'" x="'+(xL-34)+'" y="'+(cy-8)+'" width="22" height="16"/>'+
+      '<text x="'+(xL-42)+'" y="'+(cy-1)+'" text-anchor="end">'+esc(ni.label)+'</text><text class="sm" x="'+(xL-42)+'" y="'+(cy+14)+'" text-anchor="end">'+fmtV(L[n])+'</text></g>';}
+  for(const n of rn){const p=RP[n],ni=nodeInfo(n),cy=p.y+p.h/2;
+    s+='<g class="nd" data-b="'+esc(n)+'"><rect x="'+xR+'" y="'+p.y.toFixed(1)+'" width="'+bw+'" height="'+p.h.toFixed(1)+'" rx="3" fill="#f87171"/>'+
+      '<image href="'+flagUrl(ni.cc)+'" x="'+(xR+bw+10)+'" y="'+(cy-8)+'" width="22" height="16"/>'+
+      '<text x="'+(xR+bw+40)+'" y="'+(cy-1)+'">'+esc(ni.label)+'</text><text class="sm" x="'+(xR+bw+40)+'" y="'+(cy+14)+'">'+fmtV(Rr[n])+'</text></g>';}
+  $('flows').innerHTML=s+'</svg>';
+  const sv=$('fsvg');
+  sv.querySelectorAll('.rb,.nd').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{const a=el.getAttribute('data-a'),b=el.getAttribute('data-b');sv.classList.add('dim');
+      sv.querySelectorAll('.rb').forEach(r=>r.classList.toggle('hi',(!a||r.getAttribute('data-a')===a)&&(!b||r.getAttribute('data-b')===b)));});
+    el.addEventListener('mouseleave',()=>sv.classList.remove('dim'));});
+}
+function loadHist(){
+  fetch('data/history.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
+    .then(d=>{HI=d;drawHist();})
+    .catch(()=>{if(!HI){$('actnote').textContent='History not available yet (recorder not running).';$('flows').innerHTML='<div class="mut pad">History not available yet.</div>';}});
+}
+function segs(id,attr,set){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{set(b.dataset[attr]);
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.toggle('on',x===b));drawHist();});}
+segs('range','r',v=>RANGE=+v); segs('metric','m',v=>METRIC=v);
+loadHist(); setInterval(loadHist,120000);
+
+/* clock */
+function pad(n){return String(n).padStart(2,'0');}
+setInterval(()=>{const d=new Date();
+  const utc=pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds());
+  let loc; try{loc=d.toLocaleTimeString(CFG.locale,{timeZone:CFG.timeZone,hour12:false});}catch(_){loc='--';}
+  $('clk').textContent='UTC '+utc+' • '+CFG.tzLabel+' '+loc;},1000);
+
+/* fullscreen */
+$('fs').onclick=()=>{const w=$('mw'); if(document.fullscreenElement) document.exitFullscreen(); else if(w.requestFullscreen) w.requestFullscreen();};
+document.addEventListener('fullscreenchange',()=>setTimeout(()=>{map.invalidateSize();fitW();},200));
+window.addEventListener('resize',()=>map.invalidateSize());
+window.addEventListener('load',()=>setTimeout(()=>{map.invalidateSize();fitW();},300));
+
+/* websocket */
+function setSt(on,txt){$('dot').className='dot'+(on?' on':'');$('stt').textContent=txt;}
+function connect(){
+  const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');
+  ws.onopen=()=>{setSt(true,'LIVE');ws.send('conf,opb');};
+  ws.onmessage=e=>{
+    if(typeof e.data!=='string'||e.data[0]!=='o') return;
+    try{const j=JSON.parse(e.data.slice(1)); const ob=j.ctable&&j.ctable.OPENBRIDGES; if(ob) last=ob;}catch(_){}
+  };
+  ws.onclose=()=>{setSt(false,'reconnecting…');setTimeout(connect,3000);};
+  ws.onerror=()=>{try{ws.close();}catch(_){}};
+}
+connect();
+})();
+</script>
+<script src="health.js?v=1"></script>
+<script src="origin.js?v=1"></script>
+<script src="listen.js?v=1"></script>
+<script src="tops.js?v=2"></script>
+<script src="details.js?v=4"></script>
+<script src="network.js?v=1"></script>
+<script src="i18n.js?v=1"></script>
+</body>
+</html>

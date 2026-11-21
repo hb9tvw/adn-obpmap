@@ -1,0 +1,4 @@
+# adn-obpmap - other ADN servers shown in the "network" card (copy to netfetch.list)
+# <server id> <url of its tops.json>  (that server must run obp-recorder and publish tops.json, see README)
+# 2283 https://2283.adn.systems/obpdata/tops.json
+# 2281 http://2281.adn.systems:81/obpdata/tops.json

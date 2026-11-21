@@ -1,0 +1,22 @@
+[Unit]
+Description=adn-obpmap OpenBridge recorder (history, rankings, link health)
+After=network.target adn-monitor.service
+Wants=adn-monitor.service
+
+[Service]
+Type=simple
+User=obprec
+Group=obprec
+# --- edit these four values (the installer fills them in) ---
+Environment=OBP_SERVER_NAME=ADN 0000
+Environment=OBP_WS_PORT=8080
+Environment=OBP_ALERT_LANG=en
+Environment=OBPMAP_DIR=/opt/obpmap
+ExecStart=/usr/bin/python3 /opt/obpmap/recorder.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

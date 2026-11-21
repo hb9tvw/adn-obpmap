@@ -1,0 +1,2 @@
+# adn-obpmap - copy the tops.json of your other ADN servers every minute
+* * * * * obprec /opt/obpmap/netfetch.sh
