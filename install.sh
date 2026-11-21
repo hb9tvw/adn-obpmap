@@ -77,6 +77,11 @@ systemctl restart obp-recorder
 sleep 3
 systemctl is-active --quiet obp-recorder && say "obp-recorder is running" || warn "obp-recorder is not running: journalctl -u obp-recorder -n 30"
 
+if [ "$MODE" = update ]; then
+  echo; say "Update done (config.js, netfetch.list and data kept). Reload the page in the browser."
+  exit 0
+fi
+
 cat <<MSG
 
 $(say "Done.")
