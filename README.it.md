@@ -29,6 +29,17 @@ Scritto da zero da **Gabriele Biscetti, HB9TVW** per ADN 2280 (Svizzera). L'esem
 
 ## 1. Cosa si vede nella pagina
 
+*Screenshot dal server ADN 2280 (telefono).*
+
+| Mappa in tempo reale | Attività OpenBridge | Flussi OpenBridge |
+|:-:|:-:|:-:|
+| <img src="docs/screenshot-map.jpg" width="240"> | <img src="docs/screenshot-activity.jpg" width="240"> | <img src="docs/screenshot-flows.jpg" width="240"> |
+
+| Stato dei link | Scheda rete | Talkgroup più attivi |
+|:-:|:-:|:-:|
+| <img src="docs/screenshot-health.jpg" width="240"> | <img src="docs/screenshot-network.jpg" width="240"> | <img src="docs/screenshot-talkgroups.jpg" width="240"> |
+
+
 ### 1.1 La mappa in tempo reale
 
 | Elemento | Significato |

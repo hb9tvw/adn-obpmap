@@ -29,6 +29,17 @@ It was written from scratch by **Gabriele Biscetti, HB9TVW** for ADN 2280 (Switz
 
 ## 1. What you see on the page
 
+*Screenshots from ADN 2280 (phone).*
+
+| Live map | OpenBridge Activity | OpenBridge Flows |
+|:-:|:-:|:-:|
+| <img src="docs/screenshot-map.jpg" width="240"> | <img src="docs/screenshot-activity.jpg" width="240"> | <img src="docs/screenshot-flows.jpg" width="240"> |
+
+| Link health | Network card | Top talkgroups |
+|:-:|:-:|:-:|
+| <img src="docs/screenshot-health.jpg" width="240"> | <img src="docs/screenshot-network.jpg" width="240"> | <img src="docs/screenshot-talkgroups.jpg" width="240"> |
+
+
 ### 1.1 The live map
 
 | Element | Meaning |
