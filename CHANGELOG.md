@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 – 2026-11-21
+
+- install.sh: the questions are visible again (they were hidden by mistake)
+
 ## 1.0.0 – 2026-11-21
 
 First public release, extracted from the map running on ADN 2280 (Switzerland).

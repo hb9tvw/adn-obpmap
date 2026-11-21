@@ -11,7 +11,11 @@ MODE=install; [ "${1:-}" = "--update" ] && MODE=update
 
 say()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m  %s\n' "$*"; }
-ask()  { local q="$1" d="$2" a=""; { read -r -p "$q [$d]: " a </dev/tty; } 2>/dev/null || true; echo "${a:-$d}"; }
+ask()  { # question on stderr (stdout is the answer), answer from the terminal; default if none
+  local q="$1" d="$2" a=""
+  printf '%s [%s]: ' "$q" "$d" >&2
+  if [ -r /dev/tty ] && { exec 3</dev/tty; } 2>/dev/null; then read -r a <&3 || true; exec 3<&-; else echo >&2; fi
+  echo "${a:-$d}"; }
 
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo ./install.sh)"; exit 1; }
 command -v python3 >/dev/null || { echo "python3 is required"; exit 1; }

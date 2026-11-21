@@ -157,6 +157,8 @@ sudo apt install -y python3-pil fonts-dejavu-core   # optional: app icons
 sudo ./install.sh
 ```
 
+*(If you work as root and `sudo` is not installed, simply leave out `sudo` in all commands.)*
+
 The installer asks four questions: your **server number**, the **name** used in titles and alerts, the **Monitor port** (it suggests the one your Apache proxies `/ws` to), and the **language of the alerts** (en/it). It then:
 - creates the system user **`obprec`**;
 - copies the page to **`/opt/obpmap`**;

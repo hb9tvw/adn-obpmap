@@ -157,6 +157,8 @@ sudo apt install -y python3-pil fonts-dejavu-core   # facoltativo: icone dell'ap
 sudo ./install.sh
 ```
 
+*(Se lavori come root e `sudo` non è installato, togli semplicemente `sudo` da tutti i comandi.)*
+
 L'installatore fa quattro domande: il **numero del server**, il **nome** per titoli e avvisi, la **porta del Monitor** (propone quella a cui il tuo Apache inoltra `/ws`) e la **lingua degli avvisi** (en/it). Poi:
 - crea l'utente di sistema **`obprec`**;
 - copia la pagina in **`/opt/obpmap`**;
