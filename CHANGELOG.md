@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 – 2026-11-21
+
+- 🎧 buttons open ADN Live directly on the talkgroup (`listen.adn.systems/?tg=…`, thanks Rodrigo); no more copy & paste
+
 ## 1.0.1 – 2026-11-21
 
 - install.sh: the questions are visible again (they were hidden by mistake)

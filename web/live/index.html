@@ -18,13 +18,9 @@ nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center}
 nav a{text-decoration:none;color:var(--mut);font-weight:600;font-size:14px;padding:7px 12px;border-radius:8px;border:1px solid transparent}
 nav a:hover{color:var(--txt);background:rgba(255,255,255,.04)}
 nav a.on{color:var(--teal);border-color:rgba(45,212,191,.45);background:rgba(45,212,191,.08)}
-#tgbar{flex:none;display:none;align-items:center;gap:10px;padding:8px 24px;background:rgba(45,212,191,.1);border-bottom:1px solid rgba(45,212,191,.4);font-size:14px}
-#tgbar b{color:var(--teal);font-size:16px}
-#tgbar button{margin-left:auto;background:none;border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:2px 9px;cursor:pointer;font-size:15px}
 #live{flex:1;width:100%;border:0;display:block;background:#0b1220}
 .ext{font-size:12px;color:var(--mut);text-decoration:none;padding:7px 4px}
-@media (max-width:700px){.top{padding:8px 10px;gap:6px}.brand{font-size:16px}.brand img{height:26px}nav{margin-left:0;width:100%;gap:4px}nav a{font-size:12.5px;padding:5px 8px}.ext{display:inline-block;font-size:12px}#tgbar{padding:7px 10px;font-size:13px}}
-</style>
+@media (max-width:700px){.top{padding:8px 10px;gap:6px}.brand{font-size:16px}.brand img{height:26px}nav{margin-left:0;width:100%;gap:4px}nav a{font-size:12.5px;padding:5px 8px}.ext{display:inline-block;font-size:12px}</style>
 <link rel="manifest" href="/obpmap/manifest.webmanifest">
 <meta name="theme-color" content="#08111f">
 <link rel="apple-touch-icon" href="/obpmap/icon-192.png">
@@ -52,16 +48,15 @@ nav a.on{color:var(--teal);border-color:rgba(45,212,191,.45);background:rgba(45,
     <a class="ext" href="https://listen.adn.systems/" id="liveext" target="_blank" rel="noopener" title="Open ADN Live in a new tab">↗ App</a>
   </nav>
 </header>
-<div id="tgbar"><span>🎧 TG <b id="tgn"></b> copied – paste it in <b>“Escuchar un TG ahora”</b></span><button aria-label="close" onclick="this.parentNode.style.display='none'">×</button></div>
 <iframe id="live" src="about:blank" title="ADN Live" allow="autoplay; clipboard-read; clipboard-write; fullscreen"></iframe>
 <script src="/obpmap/config.js?v=1"></script>
 <script src="/obpmap/common.js?v=1"></script>
 <script>
 (function () {
   var url = (window.OBPMAP_CONFIG || {}).adnLiveUrl || 'https://listen.adn.systems/';
-  document.getElementById('live').src = url; document.getElementById('liveext').href = url;
   var tg = (new URLSearchParams(location.search).get('tg') || '').replace(/[^0-9]/g, '');
-  if (tg) { document.getElementById('tgn').textContent = tg; document.getElementById('tgbar').style.display = 'flex'; }
+  if (tg) url += (url.indexOf('?') < 0 ? '?' : '&') + 'tg=' + tg;   // ADN Live opens directly on that TG
+  document.getElementById('live').src = url; document.getElementById('liveext').href = url;
 })();
 </script>
 <script src="/obpmap/i18n.js?v=1"></script>

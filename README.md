@@ -105,11 +105,9 @@ On phones the panel slides up from the bottom.
 
 ### 1.8 🎧 Listen buttons and the ADN Live page
 
-Next to the talkgroups there is a **🎧** button. **ADN Live** (`listen.adn.systems`) cannot be opened directly on a given talkgroup, so the button does two things:
-1. it **copies the TG number**;
-2. it opens **`/obpmap/live/`**.
+Next to the talkgroups there is a **🎧** button. It opens **`/obpmap/live/?tg=…`**, and **ADN Live** (`listen.adn.systems/?tg=…`) starts directly on that talkgroup.
 
-`/obpmap/live/` is a page with **your** header (logo, Dashboard, OpenBridge Map, language selector) and ADN Live embedded below it. A strip reminds you to paste the TG into "Escuchar un TG ahora". **↗ App** opens the original ADN Live, where its own app can be installed.
+`/obpmap/live/` is a page with **your** header (logo, Dashboard, OpenBridge Map, language selector) and ADN Live embedded below it. **↗ App** opens the original ADN Live, where its own app can be installed.
 
 ### 1.9 Installable app
 

@@ -105,11 +105,9 @@ Sul telefono la scheda sale dal basso.
 
 ### 1.8 Pulsanti 🎧 e pagina ADN Live
 
-Accanto ai talkgroup c'è un pulsante **🎧**. **ADN Live** (`listen.adn.systems`) non si può aprire direttamente su un talkgroup, quindi il pulsante fa due cose:
-1. **copia il numero del TG**;
-2. apre **`/obpmap/live/`**.
+Accanto ai talkgroup c'è un pulsante **🎧**. Apre **`/obpmap/live/?tg=…`** e **ADN Live** (`listen.adn.systems/?tg=…`) parte direttamente su quel talkgroup.
 
-`/obpmap/live/` è una pagina con la **tua** barra in alto (logo, Dashboard, Mappa OpenBridge, selettore lingua) e ADN Live incorporato sotto. Una striscia ricorda di incollare il TG in "Escuchar un TG ahora". **↗ App** apre ADN Live originale, dove si può installare la sua app ufficiale.
+`/obpmap/live/` è una pagina con la **tua** barra in alto (logo, Dashboard, Mappa OpenBridge, selettore lingua) e ADN Live incorporato sotto. **↗ App** apre ADN Live originale, dove si può installare la sua app ufficiale.
 
 ### 1.9 App installabile
 

@@ -1,6 +1,6 @@
 /* adn-obpmap - "listen" buttons (HB9TVW)
-   ADN Live (listen.adn.systems) cannot be opened on a given TG yet, so the
-   button copies the TG number and opens ADN Live: paste it in "Escuchar un TG ahora". */
+   The button opens /obpmap/live/?tg=N, which embeds ADN Live directly on that TG
+   (listen.adn.systems/?tg=N). */
 (function () {
   const CFG = window.OBPMAP_CONFIG || {timeZone: 'UTC', locale: 'en-GB', serverId: ''};
   const css = document.createElement('style');
@@ -15,8 +15,7 @@
   function show(msg) { toast.innerHTML = msg; toast.style.display = 'block'; clearTimeout(tmr); tmr = setTimeout(() => toast.style.display = 'none', 4500); }
   window.listenTG = function (tg) {
     tg = String(tg).replace(/[^0-9]/g, '');
-    const done = () => show('🎧 TG <b>' + tg + '</b> copied – paste it in <b>“Escuchar un TG ahora”</b> on ADN Live');
-    try { navigator.clipboard.writeText(tg).then(done, done); } catch (e) { done(); }
+    show('🎧 ADN Live – TG <b>' + tg + '</b>');
     window.open('/obpmap/live/?tg=' + tg, 'adnlive');
   };
   window.lsnBtn = function (tg) {
