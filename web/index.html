@@ -20,7 +20,7 @@ body{background:radial-gradient(1200px 600px at 70% -10%,#16345a 0%,transparent 
 a{color:inherit}
 /* top bar */
 .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 24px;background:rgba(9,18,33,.85);
-  border-bottom:1px solid var(--line);backdrop-filter:blur(6px);position:sticky;top:0;z-index:1000}
+  border-bottom:1px solid var(--line);backdrop-filter:blur(6px);position:sticky;top:0;z-index:1100}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:22px;color:var(--teal);letter-spacing:.2px;text-decoration:none}
 .brand .lg{display:inline-flex;font-weight:800;font-size:15px;letter-spacing:1px;padding:4px 8px;border-radius:7px;
   background:linear-gradient(90deg,#1e40af 0 33%,#16a34a 33% 66%,#dc2626 66%);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
@@ -266,7 +266,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:2px 16px 22px}
 <footer>{FOOTER}</footer>
 
 <script src="config.js?v=1"></script>
-<script src="common.js?v=1"></script>
+<script src="common.js?v=2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script>
@@ -314,7 +314,7 @@ const PH=SM?18:26, HPH=SM?22:30;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const flagUrl=cc=>'https://flagcdn.com/w40/'+cc+'.png';
-const shortId=nid=>{const s=String(nid);return s.length===5?s.slice(0,4):s;};
+const shortId=nid=>{const s=String(nid),L=CFG.labels||{};return L[s]||(s.length===5?s.slice(0,4):s);};
 const pillW=(txt,home)=>SM?(home?32+7*txt.length:28+6.2*txt.length):(home?48+8.5*txt.length:42+7.5*txt.length);
 function locate(name,nid){
   const s=SAT[nid]; if(s) return {cc:HOME.cc,ll:HOME.ll,country:CFG.country,dir:s.dir,sat:s};

@@ -18,6 +18,12 @@ window.OBPMAP_CONFIG = {
   // (e.g. your second and third server). They are drawn stacked above / below the hub.
   stacked: ['2283', '22812'],
 
+  // Optional: server number shown on the pill of an OBP partner. By default a 5-digit
+  // NETWORK_ID shows its first 4 digits (20820 -> 2082); set it here when that is wrong.
+  labels: {
+    // '22810': '2280',
+  },
+
   // Optional: position (or override) of OBP partners the map does not know yet.
   // NETWORK_ID: [country code, latitude, longitude, country name, preferred tooltip side]
   locations: {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 – 2026-11-22
+
+- New option `labels` in config.js: server number shown on a partner pill when the first 4 digits of its NETWORK_ID are wrong
+- Map zoom buttons no longer cover the sticky header when scrolling
+- install.sh: Monitor port detected from the running adn-monitor service; short message with `--update`
+
 ## 1.1.0 – 2026-11-21
 
 - 🎧 buttons open ADN Live directly on the talkgroup (`listen.adn.systems/?tg=…`, thanks Rodrigo); no more copy & paste

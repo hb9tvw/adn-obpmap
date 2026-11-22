@@ -201,6 +201,7 @@ sudo apache2ctl configtest && sudo systemctl reload apache2
 | `timeZone`, `tzLabel`, `locale` | `'Europe/Zurich'`, `'CH'`, `'de-CH'` | Fuso orario e formato di tutti gli orari della pagina. |
 | `stacked` | `['2283','22812']` | `NETWORK_ID` degli OBP verso altri tuoi server nello stesso luogo, disegnati sopra e sotto il centro. |
 | `locations` | `{'22210': ['it',41.9,12.5,'Italy','left']}` | Posizione di partner OBP che la mappa non conosce, oppure correzioni: codice, latitudine, longitudine, nome del paese, lato preferito del riquadro. Gli ID sconosciuti vengono messi nel loro paese, ricavato dalle prime 3 cifre. |
+| `labels` | `{'22810': '2280'}` | Numero del server mostrato sulla pillola di un partner. Di solito un `NETWORK_ID` di 5 cifre mostra le prime 4 (20820 → 2082); impostalo quando è sbagliato. |
 | `networkTitle`, `network` | vedi l'esempio | La scheda rete (sezione 6.3). Lista vuota = scheda nascosta. |
 | `adnLiveUrl` | `'https://listen.adn.systems/'` | Pagina incorporata da `/obpmap/live/`. |
 | `footer` | `'ADN Systems 2280 · …'` | Testo del piè di pagina. |
