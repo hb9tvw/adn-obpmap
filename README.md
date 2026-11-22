@@ -356,7 +356,8 @@ install.sh                installer / updater
 
 - Written by **Gabriele Biscetti, HB9TVW**, president of the Funk-Amateur-Club Basel **HB9CSR**, for the ADN Systems network.
 - The idea of an OpenBridge map comes from the map of Antonios **SV0XAL**, ADN 2022 Greece. This code was written independently and from scratch.
-- Thanks to the **ADN Systems** development team (ADN Server, ADN Monitor, ADN Live).
+- **ADN Monitor**, the dashboard this map runs beside, is entirely the work of **Adán**: many thanks.
+- Thanks to **Rodrigo Pérez** for the `?tg=` link in ADN Live, used by the 🎧 buttons, and to the whole **ADN Systems** team.
 - Map data © **Natural Earth** (world-atlas), map library **Leaflet**, flags **flagcdn.com**.
 
 Released under the [MIT License](LICENSE). 73!
