@@ -23,7 +23,13 @@ command -v curl >/dev/null || warn "curl not found: needed only for the network 
 
 if [ "$MODE" = install ]; then
   echo "Tip: the ADN Monitor port is the one your dashboard proxies /ws to (ProxyPass /ws ws://127.0.0.1:<port>/ws)."
-  MPORT=$( (grep -rhoE 'ws://127\.0\.0\.1:[0-9]+/ws' /etc/apache2/sites-enabled/ 2>/dev/null || true) | head -1 | grep -oE '[0-9]+/ws' | grep -oE '^[0-9]+' || true)
+  # 1) the port the running adn-monitor service listens on; 2) else the Apache proxy of /ws
+  MPID=$(systemctl show -p MainPID --value adn-monitor 2>/dev/null || true)
+  MPORT=""
+  if [ -n "$MPID" ] && [ "$MPID" != 0 ] && command -v ss >/dev/null; then
+    MPORT=$( (ss -ltnpH 2>/dev/null || true) | grep -E "pid=($MPID|$(pgrep -d'|' -P "$MPID" 2>/dev/null || echo x))," | awk '{print $4}' | grep -oE '[0-9]+$' | head -1 || true)
+  fi
+  [ -n "$MPORT" ] || MPORT=$( (grep -rhoE 'ws://(127\.0\.0\.1|localhost):[0-9]+/ws' /etc/apache2/sites-enabled/ 2>/dev/null || true) | head -1 | grep -oE '[0-9]+/ws' | grep -oE '^[0-9]+' || true)
   MPORT=${MPORT:-8080}
   SID=$(ask "ADN server number (e.g. 2280)" "0000")
   SNAME=$(ask "Server name for titles and alerts" "ADN $SID")
