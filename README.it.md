@@ -274,7 +274,7 @@ Poi Chrome propone *Installa app*. Serve HTTPS.
 Non serve fare niente: il selettore compare da solo nella barra in alto. Per aggiungere o correggere una traduzione, modifica il dizionario in `web/i18n.js`. `{SRV}` sta per il numero del tuo server.
 
 ### 6.8 Voci nel menu della dashboard ADN Monitor
-In `adn-monitor.yaml` aggiungi le voci a `nav_links`, poi riavvia il Monitor:
+In `adn-monitor.yaml` aggiungi le voci a `nav_links`, poi riavvia il Monitor. Per trovare il file: `systemctl cat adn-monitor | grep ExecStart` (è il percorso dopo `-c`, per esempio `/opt/ADN-Monitor/monitor/adn-monitor.yaml`).
 ```yaml
   nav_links:
     name: "Links"

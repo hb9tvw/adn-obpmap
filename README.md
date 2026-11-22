@@ -274,7 +274,7 @@ Chrome then offers *Install app*. It requires HTTPS.
 Nothing to do: the selector appears in the header by itself. To add or fix a translation, edit the dictionary in `web/i18n.js`. `{SRV}` stands for your server number.
 
 ### 6.8 Menu entries in the ADN Monitor dashboard
-In `adn-monitor.yaml`, add the items to `nav_links`, then restart the Monitor:
+In `adn-monitor.yaml`, add the items to `nav_links`, then restart the Monitor. To find the file: `systemctl cat adn-monitor | grep ExecStart` (it is the path after `-c`, e.g. `/opt/ADN-Monitor/monitor/adn-monitor.yaml`).
 ```yaml
   nav_links:
     name: "Links"
