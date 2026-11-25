@@ -21,7 +21,7 @@ END_GAP = 6          # a leg not seen for this long has ended
 def connect():
     import base64
     s = socket.create_connection(('127.0.0.1', PORT), 10)
-    s.settimeout(30)
+    s.settimeout(120)
     key = base64.b64encode(os.urandom(16)).decode()
     s.sendall((f"GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{PORT}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
                f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
@@ -47,7 +47,7 @@ def main():
         try:
             fin, op, data = rd.frame()
         except socket.timeout:
-            continue
+            break           # a timeout mid-frame would desync the stream: stop here
         now = time.time()
         if op == 9:
             R.ws_send(s, 10, data)
