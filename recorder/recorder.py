@@ -21,7 +21,8 @@ OUT = BASE + '/data/history.json'
 STEP = 30            # bucket size in seconds
 KEEP = 24 * 3600     # history length
 STALE = 15           # seconds without seeing a stream -> it has ended
-MIN_TX = 0.5         # a TX forward shorter than this was quenched at once by BCSQ (the peer already had the stream)
+MIN_TX = 0.5         # a TX forward visible for less than this was quenched at once by BCSQ (the peer already had the stream)
+CONT = 1.5           # sightings closer than this count as continuous visible time
 HEALTH_DELAY = 120   # an OBP must stay down/up this long before it counts (no false alarms)
 HEALTH_KEEP = 30 * 86400
 TG_CONF = os.environ.get('OBP_TELEGRAM_CONF', '/etc/obpmap/telegram.json')   # {"token": "...", "chat_id": "..."}; missing = no alerts
@@ -283,13 +284,17 @@ def on_state(ob, now):
                                                 s[4] if len(s) > 4 else 0)})
             k = (name, d)
             if k not in st['seen']:
-                st['seen'][k] = [now, now]
+                st['seen'][k] = [now, now, 0.0]        # first seen, last seen, visible time
                 if d == 'RX':                      # RX counts at once
                     H.add(st['first'], name, 0, 1)
             else:
-                st['seen'][k][1] = now
-            # a TX forward counts only once it has lasted MIN_TX (otherwise it was quenched by BCSQ)
-            if d == 'TX' and k not in st.setdefault('txok', set()) and st['seen'][k][1] - st['seen'][k][0] >= MIN_TX:
+                lg = st['seen'][k]
+                if now - lg[1] < CONT:
+                    lg[2] += now - lg[1]
+                lg[1] = now
+            # a TX forward counts only once it has been VISIBLE for MIN_TX. After a BCSQ the server
+            # clears the TX chip, and it may blink again later in the call: that must not count.
+            if d == 'TX' and k not in st.setdefault('txok', set()) and st['seen'][k][2] >= MIN_TX:
                 st['txok'].add(k)
                 H.add(st['first'], name, 1, 1)
             st['last'] = now
@@ -300,11 +305,11 @@ def on_state(ob, now):
 def finish(st):
     srcs = [o for (o, d) in st['seen'] if d == 'RX']
     src = srcs[0] if srcs else 'LOCAL'
-    longest = max([b - a for (a, b) in st['seen'].values()] + [1.0])
+    longest = max([lg[1] - lg[0] for lg in st['seen'].values()] + [1.0])
     call, tg, dmrid = st.get('meta', ('?', '?', 0))
     S.add(st['first'], call, tg, dmrid, src.replace('OBP-', ''), longest)
-    for (o, d), (a, b) in st['seen'].items():
-        if d == 'TX' and b - a < MIN_TX:           # quenched by BCSQ: not real traffic, kept apart
+    for (o, d), (a, b, vis) in st['seen'].items():
+        if d == 'TX' and (o, d) not in st.get('txok', ()):   # quenched by BCSQ: not real traffic, kept apart
             H.add(st['first'], o, 4, 1)
             H.flow(st['first'], src + '>' + o, 0, quenched=True)
             continue

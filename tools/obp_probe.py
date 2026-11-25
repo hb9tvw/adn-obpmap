@@ -44,6 +44,7 @@ def main():
     legs = {}                 # (sid, obp, dir) -> [first, last, snapshots]
     done = []
     msg = b''
+    sfirst = {}               # stream id -> first time seen (the recorder files a stream under this time)
     while time.time() - t0 < SECS:
         try:
             fin, op, data = rd.frame()
@@ -70,6 +71,7 @@ def main():
             for sid, st in ((info or {}).get('STREAMS') or {}).items():
                 d = 'RX' if st and st[0] == 'RX' else 'TX'
                 k = (sid, name, d)
+                sfirst.setdefault(sid, now)
                 if k in legs:
                     if now - legs[k][1] < CONT:
                         legs[k][3] += now - legs[k][1]
@@ -106,6 +108,30 @@ def main():
     blip = sum(1 for span, v in tx if span >= .5 and v < .5)
     print('TX legs whose first-to-last span is >= 0.5 s but visible < 0.5 s (blinks again later): %d' % blip)
     print('TX legs visible >= 0.5 s: %d   visible < 0.5 s: %d' % (sum(1 for s_, v in tx if v >= .5), sum(1 for s_, v in tx if v < .5)))
+
+    # compare with what the running recorder stored for the same whole 30-s buckets
+    hist = os.path.join(os.environ['OBPMAP_DIR'], 'data', 'history.json')
+    w0 = (int(t0) // 30 + 1) * 30
+    w1 = int(t0 + SECS) // 30 * 30 - 30          # leave out the last bucket: its streams may still be running
+    if w1 <= w0 or not os.path.exists(hist):
+        return
+    vis = {}
+    for (sid, name, d), (a, b, n, v) in done:
+        if d == 'TX' and w0 <= sfirst.get(sid, 0) < w1:
+            vis[(sid, name)] = vis.get((sid, name), 0) + v
+    p_ok = sum(1 for v in vis.values() if v >= .5)
+    print('\nwaiting 50 s for the recorder to close and save those streams ...', flush=True)
+    time.sleep(50)
+    with open(hist, encoding='utf-8') as fh:
+        d = json.load(fh)
+    r_ok = r_q = 0
+    for t, o, f in d.get('b', []):
+        if w0 <= t < w1:
+            for v in o.values():
+                r_ok += v[1]
+                r_q += v[4] if len(v) > 4 else 0
+    print('same %d s window   probe: TX passed %d, BCSQ %d   recorder: TX passed %d, BCSQ %d'
+          % (w1 - w0, p_ok, len(vis) - p_ok, r_ok, r_q))
 
 
 if __name__ == '__main__':
