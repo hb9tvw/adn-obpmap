@@ -146,7 +146,7 @@ td img{width:22px;border-radius:2px;vertical-align:middle;margin-right:8px;box-s
 .net-c{position:relative;height:150px;margin-top:6px}
 .mc{display:block;width:100%;height:100%}
 .mc .ax{stroke:#35506f;stroke-width:1;vector-effect:non-scaling-stroke}
-.mc .a-rx{fill:rgba(60,240,122,.18)}.mc .a-tx{fill:rgba(248,113,113,.18)}
+.mc .a-rx{fill:rgba(60,240,122,.18)}.mc .a-tx{fill:rgba(248,113,113,.18)}.mc .a-q{fill:rgba(148,163,184,.16)}.mc .l-q{fill:none;stroke:#94a3b8;stroke-width:1.2;stroke-dasharray:3 2;vector-effect:non-scaling-stroke}.q{color:#94a3b8}
 .mc .l-rx{fill:none;stroke:var(--rx);stroke-width:1.6;vector-effect:non-scaling-stroke}
 .mc .l-tx{fill:none;stroke:var(--tx);stroke-width:1.6;vector-effect:non-scaling-stroke}
 .ticks{position:relative;height:18px;color:var(--mut);font-size:11px}
@@ -233,7 +233,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:2px 16px 22px}
 
   <div class="card">
     <div class="card-h">
-      <h2>OpenBridge Activity <small>| <span class="rx">RX</span> received ▲ · <span class="tx">TX</span> sent ▼</small></h2>
+      <h2>OpenBridge Activity <small>| <span class="rx">RX</span> received ▲ · <span class="tx">TX</span> sent ▼ · <span class="q">BCSQ</span> <span class="q">quenched (already received elsewhere)</span></small></h2>
       <div class="ctl">
         <div class="seg" id="metric"><button data-m="n" class="on">Streams</button><button data-m="t">Talk time</button></div>
         <div class="seg" id="range"><button data-r="900">15 min</button><button data-r="3600" class="on">1 h</button><button data-r="10800">3 h</button><button data-r="21600">6 h</button><button data-r="43200">12 h</button><button data-r="86400">24 h</button></div>
@@ -500,18 +500,21 @@ function nodeInfo(name){
 function series(){
   const step=HI.step, now=Math.floor(Date.now()/1000/step)*step, n=Math.round(RANGE/step);
   const g=Math.max(1,Math.ceil(n/240)), m=Math.ceil(n/g), t0=now-(n-1)*step, vi=METRIC==='n'?[0,1]:[2,3];
-  const per={}, tot={rx:new Array(m).fill(0),tx:new Array(m).fill(0)}, flows={};
+  const per={}, tot={rx:new Array(m).fill(0),tx:new Array(m).fill(0),q:new Array(m).fill(0)}, flows={}, QN=METRIC==='n';
   for(const [t,o,f] of HI.b){ if(t<t0||t>now) continue; const i=Math.min(m-1,Math.floor((t-t0)/step/g));
     for(const name in o){const v=o[name];
-      const p=per[name]||(per[name]={rx:new Array(m).fill(0),tx:new Array(m).fill(0)});
-      p.rx[i]+=v[vi[0]]; p.tx[i]+=v[vi[1]]; tot.rx[i]+=v[vi[0]]; tot.tx[i]+=v[vi[1]];}
-    for(const k in f){const a=flows[k]||(flows[k]=[0,0]);a[0]+=f[k][0];a[1]+=f[k][1];}}
+      const p=per[name]||(per[name]={rx:new Array(m).fill(0),tx:new Array(m).fill(0),q:new Array(m).fill(0)});
+      const q=QN?(v[4]||0):0;   // forwards quenched by BCSQ (counts only; they carry no talk time)
+      p.rx[i]+=v[vi[0]]; p.tx[i]+=v[vi[1]]; p.q[i]+=q; tot.rx[i]+=v[vi[0]]; tot.tx[i]+=v[vi[1]]; tot.q[i]+=q;}
+    for(const k in f){const a=flows[k]||(flows[k]=[0,0,0]);a[0]+=f[k][0];a[1]+=f[k][1];a[2]+=f[k][2]||0;}}
   return {t0,now,step,g,m,per,tot,flows};
 }
-function mirror(rx,tx,W,Hh,max){
+function mirror(rx,tx,W,Hh,max,q){
   const n=rx.length, x=i=>(n<2?0:i*W/(n-1)).toFixed(1), mid=Hh/2, k=max?(mid-2)/max:0;
   const up=rx.map((v,i)=>x(i)+','+(mid-v*k).toFixed(1)).join(' L'), dn=tx.map((v,i)=>x(i)+','+(mid+v*k).toFixed(1)).join(' L');
+  const hasQ=q&&q.some(v=>v>0), dq=hasQ?tx.map((v,i)=>x(i)+','+(mid+(v+q[i])*k).toFixed(1)).join(' L'):'';
   return '<svg class="mc" viewBox="0 0 '+W+' '+Hh+'" preserveAspectRatio="none">'+
+    (hasQ?'<path class="a-q" d="M0,'+mid+' L'+dq+' L'+W+','+mid+'Z"/><path class="l-q" d="M'+dq+'"/>':'')+
     '<path class="a-rx" d="M0,'+mid+' L'+up+' L'+W+','+mid+'Z"/><path class="a-tx" d="M0,'+mid+' L'+dn+' L'+W+','+mid+'Z"/>'+
     '<line class="ax" x1="0" y1="'+mid+'" x2="'+W+'" y2="'+mid+'"/>'+
     '<path class="l-rx" d="M'+up+'"/><path class="l-tx" d="M'+dn+'"/></svg>';
@@ -521,23 +524,23 @@ function drawHist(){
   if(!HI) return; const S=series(), bs=S.g*S.step;
   $('actnote').textContent='Height = '+(METRIC==='n'?'number of streams':'talk time')+' per '+(bs>=60?(bs/60)+' min':bs+' s')+
     ' · each OBP on its own scale · recording since '+fmtD(HI.since)+' · updated '+fmtT(HI.updated);
-  const max=Math.max(1,...S.tot.rx,...S.tot.tx);
+  const max=Math.max(1,...S.tot.rx,...S.tot.tx.map((v,i)=>v+S.tot.q[i])), qn=sumA(S.tot.q);
   let ticks=''; for(let i=0;i<=5;i++){const p=i/5; ticks+='<span style="left:'+(p*100)+'%">'+fmtT(S.t0+p*(S.now-S.t0))+'</span>';}
-  let html='<div class="net"><div class="net-h"><b>Whole network</b><span class="rx">RX '+fmtV(sumA(S.tot.rx))+'</span><span class="tx">TX '+fmtV(sumA(S.tot.tx))+
-    '</span><span class="mut" style="margin-left:auto;font-size:12px">peak '+fmtV(max)+'</span></div><div class="net-c" id="netc">'+mirror(S.tot.rx,S.tot.tx,1000,150,max)+
+  let html='<div class="net"><div class="net-h"><b>Whole network</b><span class="rx">RX '+fmtV(sumA(S.tot.rx))+'</span><span class="tx">TX '+fmtV(sumA(S.tot.tx))+'</span>'+(qn?'<span class="q" title="forwards quenched by BCSQ: the other server already had the stream">BCSQ '+fmtV(qn)+'</span>':'')+
+    '<span class="mut" style="margin-left:auto;font-size:12px">peak '+fmtV(max)+'</span></div><div class="net-c" id="netc">'+mirror(S.tot.rx,S.tot.tx,1000,150,max,S.tot.q)+
     '<div class="hl" id="hl"></div><div class="hv" id="hv"></div></div><div class="ticks">'+ticks+'</div></div>';
   const names=Object.keys(HI.obps); Object.keys(S.per).forEach(n=>{if(!names.includes(n))names.push(n);});
   const act=n=>S.per[n]?sumA(S.per[n].rx)+sumA(S.per[n].tx):0;
   names.sort((a,b)=>act(b)-act(a)||a.localeCompare(b));
   html+='<div class="grid">';
-  for(const n of names){const p=S.per[n]||{rx:new Array(S.m).fill(0),tx:new Array(S.m).fill(0)}, ni=nodeInfo(n);
-    const pm=Math.max(1,...p.rx,...p.tx), r=sumA(p.rx), t=sumA(p.tx);
+  for(const n of names){const p=S.per[n]||{rx:new Array(S.m).fill(0),tx:new Array(S.m).fill(0),q:new Array(S.m).fill(0)}, ni=nodeInfo(n);
+    const pm=Math.max(1,...p.rx,...p.tx.map((v,i)=>v+p.q[i])), r=sumA(p.rx), t=sumA(p.tx), qq=sumA(p.q);
     html+='<div class="oc'+(r+t?'':' idle')+'"><div class="oc-h">'+spin(ni,ni.up===false)+'<span class="nm" title="'+esc(n)+'">'+esc(ni.label)+
-      '</span><span class="v rx">RX '+fmtV(r)+'</span><span class="v tx">TX '+fmtV(t)+'</span></div><div class="oc-c">'+mirror(p.rx,p.tx,600,58,pm)+'</div></div>';}
+      '</span><span class="v rx">RX '+fmtV(r)+'</span><span class="v tx">TX '+fmtV(t)+'</span>'+(qq?'<span class="v q" title="quenched by BCSQ">BCSQ '+fmtV(qq)+'</span>':'')+'</div><div class="oc-c">'+mirror(p.rx,p.tx,600,58,pm,p.q)+'</div></div>';}
   $('act').innerHTML=html+'</div>';
   const c=$('netc'); c.onmousemove=e=>{const r=c.getBoundingClientRect(),fx=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),i=Math.round(fx*(S.m-1));
     const x=(S.m<2?0:i/(S.m-1))*r.width; $('hl').style.display='block'; $('hl').style.left=x+'px';
-    const hv=$('hv'); hv.style.display='block'; hv.innerHTML=fmtT(S.t0+i*bs)+' · <span class="rx">RX '+fmtV(S.tot.rx[i])+'</span> · <span class="tx">TX '+fmtV(S.tot.tx[i])+'</span>';
+    const hv=$('hv'); hv.style.display='block'; hv.innerHTML=fmtT(S.t0+i*bs)+' · <span class="rx">RX '+fmtV(S.tot.rx[i])+'</span> · <span class="tx">TX '+fmtV(S.tot.tx[i])+'</span>'+(S.tot.q[i]?' · <span class="q">BCSQ '+fmtV(S.tot.q[i])+'</span>':'');
     hv.style.left=Math.min(Math.max(0,x-hv.offsetWidth/2),r.width-hv.offsetWidth)+'px';};
   c.onmouseleave=()=>{$('hl').style.display='none';$('hv').style.display='none';};
   drawFlows(S);
@@ -564,7 +567,7 @@ function drawFlows(S){
     const x0=xL+bw, x1=xR;
     s+='<path class="rb" data-a="'+esc(a)+'" data-b="'+esc(b)+'" fill="url(#fg)" d="M'+x0+','+y0.toFixed(1)+' C'+mx+','+y0.toFixed(1)+' '+mx+','+y1.toFixed(1)+' '+x1+','+y1.toFixed(1)+
       ' L'+x1+','+(y1+hr).toFixed(1)+' C'+mx+','+(y1+hr).toFixed(1)+' '+mx+','+(y0+hl).toFixed(1)+' '+x0+','+(y0+hl).toFixed(1)+'Z"><title>'+
-      esc(nodeInfo(a).label+' → '+nodeInfo(b).label+': '+fmtV(v))+'</title></path>';}
+      esc(nodeInfo(a).label+' → '+nodeInfo(b).label+': '+fmtV(v)+(S.flows[k][2]?' · BCSQ '+S.flows[k][2]:''))+'</title></path>';}
   for(const n of ln){const p=LP[n],ni=nodeInfo(n),cy=p.y+p.h/2;
     s+='<g class="nd" data-a="'+esc(n)+'"><rect x="'+xL+'" y="'+p.y.toFixed(1)+'" width="'+bw+'" height="'+p.h.toFixed(1)+'" rx="3" fill="#3cf07a"/>'+
       '<image href="'+flagUrl(ni.cc)+'" x="'+(xL-34)+'" y="'+(cy-8)+'" width="22" height="16"/>'+
@@ -624,6 +627,6 @@ connect();
 <script src="tops.js?v=2"></script>
 <script src="details.js?v=4"></script>
 <script src="network.js?v=1"></script>
-<script src="i18n.js?v=1"></script>
+<script src="i18n.js?v=2"></script>
 </body>
 </html>

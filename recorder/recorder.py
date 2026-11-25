@@ -21,6 +21,7 @@ OUT = BASE + '/data/history.json'
 STEP = 30            # bucket size in seconds
 KEEP = 24 * 3600     # history length
 STALE = 15           # seconds without seeing a stream -> it has ended
+MIN_TX = 0.5         # a TX forward shorter than this was quenched at once by BCSQ (the peer already had the stream)
 HEALTH_DELAY = 120   # an OBP must stay down/up this long before it counts (no false alarms)
 HEALTH_KEEP = 30 * 86400
 TG_CONF = os.environ.get('OBP_TELEGRAM_CONF', '/etc/obpmap/telegram.json')   # {"token": "...", "chat_id": "..."}; missing = no alerts
@@ -40,7 +41,7 @@ def log(*a):
 
 class History:
     def __init__(self):
-        self.buckets = {}            # t -> {'o': {obp: [rx, tx, rxt, txt]}, 'f': {"a>b": [n, secs]}}
+        self.buckets = {}            # t -> {'o': {obp: [rx, tx, rxt, txt, quenched]}, 'f': {"a>b": [n, secs, quenched]}}
         self.obps = {}
         self.since = int(time.time())
         self.st = {}                 # obp -> [up(bool), since]
@@ -66,13 +67,20 @@ class History:
         return self.buckets.setdefault(int(ts) // STEP * STEP, {'o': {}, 'f': {}})
 
     def add(self, ts, obp, idx, val):
-        o = self.bucket(ts)['o'].setdefault(obp, [0, 0, 0, 0])
+        o = self.bucket(ts)['o'].setdefault(obp, [0, 0, 0, 0, 0])
+        while len(o) < 5:
+            o.append(0)
         o[idx] += val
 
-    def flow(self, ts, key, secs):
-        f = self.bucket(ts)['f'].setdefault(key, [0, 0])
-        f[0] += 1
-        f[1] += secs
+    def flow(self, ts, key, secs, quenched=False):
+        f = self.bucket(ts)['f'].setdefault(key, [0, 0, 0])
+        while len(f) < 3:
+            f.append(0)
+        if quenched:
+            f[2] += 1
+        else:
+            f[0] += 1
+            f[1] += secs
 
     def save(self):
         cut = time.time() - KEEP
@@ -80,8 +88,8 @@ class History:
             del self.buckets[t]
         b = []
         for t, v in sorted(self.buckets.items()):
-            o = {k: [x[0], x[1], round(x[2]), round(x[3])] for k, x in v['o'].items()}
-            f = {k: [x[0], round(x[1])] for k, x in v['f'].items()}
+            o = {k: [x[0], x[1], round(x[2]), round(x[3])] + ([x[4]] if len(x) > 4 and x[4] else []) for k, x in v['o'].items()}
+            f = {k: [x[0], round(x[1])] + ([x[2]] if len(x) > 2 and x[2] else []) for k, x in v['f'].items()}
             b.append([t, o, f])
         hcut = time.time() - HEALTH_KEEP
         self.out = [o for o in self.out if not o[2] or o[2] >= hcut]
@@ -276,9 +284,14 @@ def on_state(ob, now):
             k = (name, d)
             if k not in st['seen']:
                 st['seen'][k] = [now, now]
-                H.add(st['first'], name, 0 if d == 'RX' else 1, 1)
+                if d == 'RX':                      # RX counts at once
+                    H.add(st['first'], name, 0, 1)
             else:
                 st['seen'][k][1] = now
+            # a TX forward counts only once it has lasted MIN_TX (otherwise it was quenched by BCSQ)
+            if d == 'TX' and k not in st.setdefault('txok', set()) and st['seen'][k][1] - st['seen'][k][0] >= MIN_TX:
+                st['txok'].add(k)
+                H.add(st['first'], name, 1, 1)
             st['last'] = now
     for sid in [x for x, st in live.items() if now - st['last'] > STALE]:
         finish(live.pop(sid))
@@ -291,6 +304,10 @@ def finish(st):
     call, tg, dmrid = st.get('meta', ('?', '?', 0))
     S.add(st['first'], call, tg, dmrid, src.replace('OBP-', ''), longest)
     for (o, d), (a, b) in st['seen'].items():
+        if d == 'TX' and b - a < MIN_TX:           # quenched by BCSQ: not real traffic, kept apart
+            H.add(st['first'], o, 4, 1)
+            H.flow(st['first'], src + '>' + o, 0, quenched=True)
+            continue
         dur = max(b - a, 1.0)
         S.obp_call(st['first'], o, d, call, tg, dmrid, dur)
         H.add(st['first'], o, 2 if d == 'RX' else 3, dur)

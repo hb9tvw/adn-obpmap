@@ -61,6 +61,7 @@ On phones the map opens on a view centred on the Atlantic, so that Europe and th
 A chart of the traffic for each OBP and for the whole network: **received (RX) above the line, sent (TX) below**.
 - Choose **Streams** (number of calls) or **Talk time**.
 - Choose the period: **15 min, 1 h, 3 h, 6 h, 12 h or 24 h**.
+- **Grey dashed band (BCSQ)**: forwards the other server refused at once. On the ADN mesh most servers get a call directly from its source, so when your server forwards the same call it answers with a **BCSQ** ("I already have it") and the forward stops within a fraction of a second. These forwards are not real traffic: a TX counts only if it lasts at least **0.5 s**, and the refused ones are shown apart in grey (Streams view only; they carry no talk time). The Flows diagram and the rankings count only the forwards that really went through.
 
 ### 1.3 OpenBridge Flows
 
@@ -356,7 +357,7 @@ install.sh                installer / updater
 ## 10. Credits and license
 
 - Written by **Gabriele Biscetti, HB9TVW**, president of the Funk-Amateur-Club Basel **HB9CSR**, for the ADN Systems network.
-- The idea of an OpenBridge map comes from the map of Antonios **SV0XAL**, ADN 2022 Greece. This code was written independently and from scratch.
+- The idea of an OpenBridge map comes from the map of Antonios **SV0XAL**, ADN 2022 Greece. This code was written independently and from scratch. Antonios also pointed out that forwards quenched by BCSQ must be kept apart from real TX: thank you!
 - **ADN Monitor**, the dashboard this map runs beside, is entirely the work of **Adán**: many thanks.
 - Thanks to **Rodrigo Pérez** for the `?tg=` link in ADN Live, used by the 🎧 buttons, and to the whole **ADN Systems** team.
 - Map data © **Natural Earth** (world-atlas), map library **Leaflet**, flags **flagcdn.com**.

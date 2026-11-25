@@ -61,6 +61,7 @@ Sul telefono la mappa si apre centrata sull'Atlantico, così Europa e Americhe s
 Un grafico del traffico per ogni OBP e per tutta la rete: **ricevuto (RX) sopra la linea, inviato (TX) sotto**.
 - Scegli **Streams** (numero di chiamate) o **Tempo di parlato**.
 - Scegli il periodo: **15 min, 1 h, 3 h, 6 h, 12 h o 24 h**.
+- **Banda grigia tratteggiata (BCSQ)**: inoltri che l'altro server ha rifiutato subito. Nella rete ADN a maglia quasi tutti i server ricevono una chiamata direttamente dalla sua origine, quindi quando il tuo server inoltra la stessa chiamata l'altro risponde con un **BCSQ** ("ce l'ho già") e l'inoltro si ferma in una frazione di secondo. Questi inoltri non sono traffico vero: un TX conta solo se dura almeno **0,5 s**, e quelli rifiutati sono mostrati a parte in grigio (solo nella vista Streams; non hanno tempo di parlato). Il diagramma dei Flussi e le classifiche contano solo gli inoltri passati davvero.
 
 ### 1.3 Flussi OpenBridge
 
@@ -356,7 +357,7 @@ install.sh                installatore / aggiornamento
 ## 10. Ringraziamenti e licenza
 
 - Scritto da **Gabriele Biscetti, HB9TVW**, presidente del Funk-Amateur-Club Basel **HB9CSR**, per la rete ADN Systems.
-- L'idea di una mappa OpenBridge nasce dalla mappa di Antonios **SV0XAL**, ADN 2022 Grecia. Questo codice è stato scritto in modo indipendente e da zero.
+- L'idea di una mappa OpenBridge nasce dalla mappa di Antonios **SV0XAL**, ADN 2022 Grecia. Questo codice è stato scritto in modo indipendente e da zero. Antonios ha anche fatto notare che gli inoltri fermati dal BCSQ vanno separati dal TX vero: grazie!
 - **ADN Monitor**, la dashboard accanto a cui gira questa mappa, è interamente opera di **Adán**: grazie di cuore.
 - Grazie a **Rodrigo Pérez** per il collegamento `?tg=` in ADN Live, usato dai pulsanti 🎧, e a tutto il team di **ADN Systems**.
 - Dati della mappa © **Natural Earth** (world-atlas), libreria **Leaflet**, bandiere **flagcdn.com**.
