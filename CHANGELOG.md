@@ -2,7 +2,7 @@
 
 ## 1.2.0 – 2026-11-25
 
-- **BCSQ-quenched forwards are no longer counted as TX.** A TX forward counts only if it lasts at least 0.5 s; shorter ones (the other server answered BCSQ: it already had the stream) are stored apart and drawn as a grey dashed band in OpenBridge Activity. Flows and rankings count only forwards that really went through. Idea by Antonios SV0XAL (ADN 2022). Measured on ADN 2280: about half of the TX forwards were quenched.
+- **BCSQ-quenched forwards are no longer counted as TX.** A TX forward counts only if it is visible for at least 0.5 s (summed: after a BCSQ the TX chip can blink again later in the call); shorter ones (the other server answered BCSQ: it already had the stream) are stored apart and drawn as a grey dashed band in OpenBridge Activity. Flows and rankings count only forwards that really went through. Idea by Antonios SV0XAL (ADN 2022). Measured on ADN 2280: about two thirds of the TX forwards were quenched; probe and recorder agree (331/709 vs 326/706 in the same 4 minutes).
 - New read-only tool `tools/obp_probe.py` to measure OBP forward legs on your own server.
 - TX recorded before this version cannot be split afterwards.
 
