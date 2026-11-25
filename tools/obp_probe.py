@@ -15,7 +15,8 @@ import recorder as R   # only the websocket helpers are used
 
 SECS = int(sys.argv[1]) if len(sys.argv) > 1 else 180
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else R.WS_PORT
-END_GAP = 6          # a leg not seen for this long has ended
+END_GAP = 15         # a leg not seen for this long has ended (same as the recorder's STALE)
+CONT = 1.5           # sightings closer than this count as continuous visible time
 
 
 def connect():
@@ -70,10 +71,12 @@ def main():
                 d = 'RX' if st and st[0] == 'RX' else 'TX'
                 k = (sid, name, d)
                 if k in legs:
+                    if now - legs[k][1] < CONT:
+                        legs[k][3] += now - legs[k][1]
                     legs[k][1] = now
                     legs[k][2] += 1
                 else:
-                    legs[k] = [now, now, 1]
+                    legs[k] = [now, now, 1, 0.0]
         for k in [k for k, v in legs.items() if now - v[1] > END_GAP]:
             done.append((k, legs.pop(k)))
     done += list(legs.items())
@@ -85,20 +88,24 @@ def main():
         print('  interval  min %.2f s  median %.2f s  p90 %.2f s  max %.2f s'
               % (g[0], statistics.median(g), g[int(len(g) * .9)], g[-1]))
     rx_span = {}
-    for (sid, name, d), (a, b, n) in done:
+    for (sid, name, d), (a, b, n, v) in done:
         if d == 'RX':
             rx_span[sid] = max(rx_span.get(sid, 0), b - a)
     for d in ('RX', 'TX'):
-        sp = [(b - a, n, sid) for (sid, name, dd), (a, b, n) in done if dd == d]
+        sp = [(b - a, n, sid) for (sid, name, dd), (a, b, n, v) in done if dd == d]
         once = sum(1 for x, n, _ in sp if n == 1)
         short = sum(1 for x, n, _ in sp if n > 1 and x < .5)
         mid = sum(1 for x, n, _ in sp if .5 <= x < 2)
         lng = sum(1 for x, n, _ in sp if x >= 2)
         print('%s legs: %d   seen once: %d   <0.5 s: %d   0.5-2 s: %d   >=2 s: %d'
               % (d, len(sp), once, short, mid, lng))
-    q = sum(1 for (sid, name, d), (a, b, n) in done
+    q = sum(1 for (sid, name, d), (a, b, n, v) in done
             if d == 'TX' and b - a < .5 and rx_span.get(sid, 0) >= 2)
     print('TX legs shorter than 0.5 s while their RX lasted >= 2 s (likely BCSQ): %d' % q)
+    tx = [(b - a, v) for (sid, name, d), (a, b, n, v) in done if d == 'TX']
+    blip = sum(1 for span, v in tx if span >= .5 and v < .5)
+    print('TX legs whose first-to-last span is >= 0.5 s but visible < 0.5 s (blinks again later): %d' % blip)
+    print('TX legs visible >= 0.5 s: %d   visible < 0.5 s: %d' % (sum(1 for s_, v in tx if v >= .5), sum(1 for s_, v in tx if v < .5)))
 
 
 if __name__ == '__main__':
