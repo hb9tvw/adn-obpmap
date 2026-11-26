@@ -40,5 +40,6 @@ window.OBPMAP_CONFIG = {
   ],
 
   adnLiveUrl: 'https://listen.adn.systems/',   // page embedded by /obpmap/live/ and opened by the 🎧 buttons
+  updateCheck: true,                           // footer notice when GitHub has a newer version (false = off)
   footer: 'ADN Systems 2280 · Funk-Amateur-Club Basel HB9CSR · HB9TVW'
 };
