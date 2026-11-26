@@ -44,6 +44,10 @@ say "Copying files to $DEST"
 mkdir -p "$DEST/live" "$DEST/data"
 cp "$HERE"/web/*.js "$HERE"/web/index.html "$DEST"/
 cp "$HERE"/web/live/index.html "$DEST/live/"
+# cache-busting: every update gets its own ?v= on the scripts, so browsers never keep old copies
+VER=$(git -C "$HERE" rev-parse --short HEAD 2>/dev/null || date +%s)
+sed -i -E "s/\.js\?v=[0-9A-Za-z]+/.js?v=$VER/g" "$DEST/index.html" "$DEST/live/index.html"
+cat "$HERE/VERSION" > "$DEST/version.txt" 2>/dev/null || echo "$VER" > "$DEST/version.txt"
 cp "$HERE/recorder/recorder.py" "$HERE/recorder/netfetch.sh" "$DEST"/
 chmod 755 "$DEST/netfetch.sh"
 [ -f "$DEST/netfetch.list" ] || cp "$HERE/recorder/netfetch.example.list" "$DEST/netfetch.list"

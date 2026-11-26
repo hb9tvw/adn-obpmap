@@ -60,8 +60,9 @@ On phones the map opens on a view centred on the Atlantic, so that Europe and th
 
 A chart of the traffic for each OBP and for the whole network: **received (RX) above the line, sent (TX) below**.
 - Choose **Streams** (number of calls) or **Talk time**.
-- Choose the period: **15 min, 1 h, 3 h, 6 h, 12 h or 24 h**.
+- Choose the period: **15 min, 1 h, 3 h, 6 h, 12 h, 24 h or 7 days** (7 days uses 10-minute steps).
 - **Grey dashed band (BCSQ)**: forwards the other server refused at once. On the ADN mesh most servers get a call directly from its source, so when your server forwards the same call it answers with a **BCSQ** ("I already have it") and the forward stops within a fraction of a second. These forwards are not real traffic: a TX counts only if it lasts at least **0.5 s**, and the refused ones are shown apart in grey (Streams view only; they carry no talk time). The Flows diagram and the rankings count only the forwards that really went through.
+- **BCSQ %** next to each OBP: the share of forwards to that OBP that were quenched. A link close to 100 % is redundant (the peer gets almost everything another way); a sudden change can point to a routing problem.
 
 ### 1.3 OpenBridge Flows
 
@@ -205,6 +206,7 @@ sudo apache2ctl configtest && sudo systemctl reload apache2
 | `labels` | `{'22810': '2280'}` | Server number shown on a partner's pill. By default a 5-digit `NETWORK_ID` shows its first 4 digits (20820 → 2082); set it when that is wrong. |
 | `networkTitle`, `network` | see the example | The network card (section 6.3). An empty list hides it. |
 | `adnLiveUrl` | `'https://listen.adn.systems/'` | Page embedded by `/obpmap/live/`. |
+| `updateCheck` | `true` | Shows "new version available" in the footer when GitHub has a newer version. `false` switches it off. |
 | `footer` | `'ADN Systems 2280 · …'` | Footer text. |
 
 ---
@@ -225,6 +227,7 @@ Its settings are in `/etc/systemd/system/obp-recorder.service`:
 - `OBP_SERVER_NAME`: name used in the alerts;
 - `OBP_WS_PORT`: the ADN Monitor port;
 - `OBP_ALERT_LANG`: `en` or `it`;
+- `OBP_WEEKLY`: `0` switches off the weekly Telegram summary;
 - `OBPMAP_DIR`: the installation folder.
 
 After editing the file, run `systemctl daemon-reload && systemctl restart obp-recorder`.
@@ -257,6 +260,8 @@ The cron job `/etc/cron.d/obpmap-netfetch` copies the files every minute.
    ```
 
 If the file is missing, no alerts are sent.
+
+**Weekly summary.** With the same file, every **Monday from 09:00** (server time) the recorder sends a summary of the last 7 days: calls, talk time, top 5 talkgroups and operators, uptime of each OBP link and the BCSQ share. To switch it off add `Environment=OBP_WEEKLY=0` to the service.
 
 ### 6.5 ADN Live page and 🎧 buttons
 They work out of the box at `/obpmap/live/`. To change the embedded page, set `adnLiveUrl` in `config.js`.

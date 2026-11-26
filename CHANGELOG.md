@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 – 2026-11-26
+
+- **BCSQ %** per OBP and for the whole network: share of forwards quenched by BCSQ (a link near 100 % is redundant)
+- **7 days** view in OpenBridge Activity (10-minute buckets, kept for 7 days; seeded from the 24 h history on first start)
+- **Weekly Telegram summary** every Monday from 09:00: calls, talk time, top talkgroups and operators, link uptime, BCSQ share (`OBP_WEEKLY=0` switches it off)
+- **"New version available"** notice in the footer (`updateCheck: false` switches it off); new file `VERSION`
+- All remaining notes translated (17 languages); country names shown in the page language
+- install.sh: every update gets its own `?v=` on the scripts, so browsers never keep old copies
+
 ## 1.2.0 – 2026-11-25
 
 - **BCSQ-quenched forwards are no longer counted as TX.** A TX forward counts only if it is visible for at least 0.5 s (summed: after a BCSQ the TX chip can blink again later in the call); shorter ones (the other server answered BCSQ: it already had the stream) are stored apart and drawn as a grey dashed band in OpenBridge Activity. Flows and rankings count only forwards that really went through. Idea by Antonios SV0XAL (ADN 2022). Measured on ADN 2280: about two thirds of the TX forwards were quenched; probe and recorder agree (331/709 vs 326/706 in the same 4 minutes).

@@ -60,8 +60,9 @@ Sul telefono la mappa si apre centrata sull'Atlantico, così Europa e Americhe s
 
 Un grafico del traffico per ogni OBP e per tutta la rete: **ricevuto (RX) sopra la linea, inviato (TX) sotto**.
 - Scegli **Streams** (numero di chiamate) o **Tempo di parlato**.
-- Scegli il periodo: **15 min, 1 h, 3 h, 6 h, 12 h o 24 h**.
+- Scegli il periodo: **15 min, 1 h, 3 h, 6 h, 12 h, 24 h o 7 giorni** (7 giorni usa intervalli di 10 minuti).
 - **Banda grigia tratteggiata (BCSQ)**: inoltri che l'altro server ha rifiutato subito. Nella rete ADN a maglia quasi tutti i server ricevono una chiamata direttamente dalla sua origine, quindi quando il tuo server inoltra la stessa chiamata l'altro risponde con un **BCSQ** ("ce l'ho già") e l'inoltro si ferma in una frazione di secondo. Questi inoltri non sono traffico vero: un TX conta solo se dura almeno **0,5 s**, e quelli rifiutati sono mostrati a parte in grigio (solo nella vista Streams; non hanno tempo di parlato). Il diagramma dei Flussi e le classifiche contano solo gli inoltri passati davvero.
+- **BCSQ %** accanto a ogni OBP: la quota di inoltri verso quell'OBP che sono stati rifiutati. Un collegamento vicino al 100 % è ridondante (l'altro server riceve quasi tutto per un'altra strada); un cambiamento improvviso può indicare un problema di instradamento.
 
 ### 1.3 Flussi OpenBridge
 
@@ -205,6 +206,7 @@ sudo apache2ctl configtest && sudo systemctl reload apache2
 | `labels` | `{'22810': '2280'}` | Numero del server mostrato sulla pillola di un partner. Di solito un `NETWORK_ID` di 5 cifre mostra le prime 4 (20820 → 2082); impostalo quando è sbagliato. |
 | `networkTitle`, `network` | vedi l'esempio | La scheda rete (sezione 6.3). Lista vuota = scheda nascosta. |
 | `adnLiveUrl` | `'https://listen.adn.systems/'` | Pagina incorporata da `/obpmap/live/`. |
+| `updateCheck` | `true` | Mostra "nuova versione disponibile" nel piè di pagina quando su GitHub c'è una versione più recente. `false` lo disattiva. |
 | `footer` | `'ADN Systems 2280 · …'` | Testo del piè di pagina. |
 
 ---
@@ -225,6 +227,7 @@ Le impostazioni sono in `/etc/systemd/system/obp-recorder.service`:
 - `OBP_SERVER_NAME`: nome negli avvisi;
 - `OBP_WS_PORT`: porta di ADN Monitor;
 - `OBP_ALERT_LANG`: `en` o `it`;
+- `OBP_WEEKLY`: `0` disattiva il riepilogo settimanale su Telegram;
 - `OBPMAP_DIR`: cartella di installazione.
 
 Dopo una modifica: `systemctl daemon-reload && systemctl restart obp-recorder`.
@@ -257,6 +260,8 @@ Il cron `/etc/cron.d/obpmap-netfetch` copia i file ogni minuto.
    ```
 
 Se il file non c'è, non viene inviato nessun avviso.
+
+**Riepilogo settimanale.** Con lo stesso file, ogni **lunedì dalle 09:00** (ora del server) il registratore manda un riepilogo degli ultimi 7 giorni: chiamate, tempo di parlato, i 5 talkgroup e operatori più attivi, la disponibilità di ogni collegamento OBP e la quota BCSQ. Per disattivarlo aggiungi `Environment=OBP_WEEKLY=0` al servizio.
 
 ### 6.5 Pagina ADN Live e pulsanti 🎧
 Funzionano subito su `/obpmap/live/`. Per cambiare la pagina incorporata, imposta `adnLiveUrl` in `config.js`.

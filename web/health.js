@@ -45,8 +45,8 @@
   function draw() {
     if (!D || !D.st) { document.getElementById('hnote').textContent = 'Link monitoring starts with the new recorder.'; return; }
     const now = Date.now() / 1000, t0 = now - RANGE, from = Math.max(t0, D.hsince || t0), span = now - t0, known = now - from;
-    document.getElementById('hnote').textContent = 'Monitoring since ' + fmtT(D.hsince) +
-      ' · an OBP counts as down after 2 min without connection · grey = before monitoring started';
+    document.getElementById('hnote').textContent = tt('Monitoring since') + ' ' + fmtT(D.hsince) +
+      ' · ' + tt('an OBP counts as down after 2 min without connection') + ' · ' + tt('grey = before monitoring started');
     const names = Object.keys(D.st).sort((a, b) => (D.st[a][0] - D.st[b][0]) || a.localeCompare(b));
     let h = '<div class="hrow hd"><div>OBP</div><div class="c-st">Status</div><div>' + (RANGE === 86400 ? '24 h' : RANGE === 604800 ? '7 d' : '30 d') +
       '</div><div>Outages</div><div class="c-bar">Timeline</div></div>';
@@ -64,7 +64,7 @@
       if (from > t0) segs = '<b style="left:0;width:' + ((from - t0) / span * 100).toFixed(2) + '%"></b>' + segs;
       const pc = known > 0 ? Math.max(0, 100 - down / known * 100) : 100;
       const col = pc >= 99 ? 'var(--rx,#3cf07a)' : pc >= 95 ? '#f5b041' : '#f87171';
-      h += '<div class="hrow"><div class="nm"><img src="https://flagcdn.com/w40/' + cc + '.png" alt="">' + esc((NAMES[cc] || n.replace(/^OBP-/, '')) + ' · ' + (o.nid || '?')) +
+      h += '<div class="hrow"><div class="nm"><img src="https://flagcdn.com/w40/' + cc + '.png" alt="">' + esc((ctry(cc, NAMES[cc]) || n.replace(/^OBP-/, '')) + ' · ' + (o.nid || '?')) +
         ' <span class="sub">' + esc(n) + '</span></div>' +
         '<div class="c-st ' + (up ? 's-on' : 's-off') + '">' + (up ? '● up' : '● DOWN') + ' <span class="sub">' + (up ? 'for ' : 'since ') + dur(now - since) + '</span></div>' +
         '<div class="pc" style="color:' + col + '">' + pc.toFixed(pc >= 99.95 ? 0 : 1) + '%</div><div class="pc">' + cnt + '</div>' +

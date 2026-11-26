@@ -20,6 +20,8 @@ WS_PORT = int(os.environ.get('OBP_WS_PORT', '8080'))   # port of the ADN Monitor
 OUT = BASE + '/data/history.json'
 STEP = 30            # bucket size in seconds
 KEEP = 24 * 3600     # history length
+LSTEP = 600          # long history: 10-minute buckets ...
+LKEEP = 7 * 86400    # ... kept for 7 days
 STALE = 15           # seconds without seeing a stream -> it has ended
 MIN_TX = 0.5         # a TX forward visible for less than this was quenched at once by BCSQ (the peer already had the stream)
 CONT = 1.5           # sightings closer than this count as continuous visible time
@@ -43,6 +45,7 @@ def log(*a):
 class History:
     def __init__(self):
         self.buckets = {}            # t -> {'o': {obp: [rx, tx, rxt, txt, quenched]}, 'f': {"a>b": [n, secs, quenched]}}
+        self.long = {}               # same, 10-minute buckets for 7 days
         self.obps = {}
         self.since = int(time.time())
         self.st = {}                 # obp -> [up(bool), since]
@@ -58,6 +61,19 @@ class History:
             self.hsince = d.get('hsince', self.hsince)
             for t, o, f in d.get('b', []):
                 self.buckets[int(t)] = {'o': o, 'f': f}
+            for t, o, f in d.get('l', []):
+                self.long[int(t)] = {'o': o, 'f': f}
+            if not self.long:                # first start with this version: seed from the 24 h buckets
+                for t, v in self.buckets.items():
+                    lb = self.long.setdefault(t // LSTEP * LSTEP, {'o': {}, 'f': {}})
+                    for k, x in v['o'].items():
+                        y = lb['o'].setdefault(k, [0, 0, 0, 0, 0])
+                        for i, val in enumerate(x[:5]):
+                            y[i] += val
+                    for k, x in v['f'].items():
+                        y = lb['f'].setdefault(k, [0, 0, 0])
+                        for i, val in enumerate(x[:3]):
+                            y[i] += val
             log('history loaded:', len(self.buckets), 'buckets')
         except FileNotFoundError:
             log('no history yet, starting fresh')
@@ -67,35 +83,47 @@ class History:
     def bucket(self, ts):
         return self.buckets.setdefault(int(ts) // STEP * STEP, {'o': {}, 'f': {}})
 
+    def lbucket(self, ts):
+        return self.long.setdefault(int(ts) // LSTEP * LSTEP, {'o': {}, 'f': {}})
+
     def add(self, ts, obp, idx, val):
-        o = self.bucket(ts)['o'].setdefault(obp, [0, 0, 0, 0, 0])
-        while len(o) < 5:
-            o.append(0)
-        o[idx] += val
+        for b in (self.bucket(ts), self.lbucket(ts)):
+            o = b['o'].setdefault(obp, [0, 0, 0, 0, 0])
+            while len(o) < 5:
+                o.append(0)
+            o[idx] += val
 
     def flow(self, ts, key, secs, quenched=False):
-        f = self.bucket(ts)['f'].setdefault(key, [0, 0, 0])
-        while len(f) < 3:
-            f.append(0)
-        if quenched:
-            f[2] += 1
-        else:
-            f[0] += 1
-            f[1] += secs
+        for b in (self.bucket(ts), self.lbucket(ts)):
+            f = b['f'].setdefault(key, [0, 0, 0])
+            while len(f) < 3:
+                f.append(0)
+            if quenched:
+                f[2] += 1
+            else:
+                f[0] += 1
+                f[1] += secs
 
     def save(self):
         cut = time.time() - KEEP
         for t in [t for t in self.buckets if t < cut]:
             del self.buckets[t]
-        b = []
-        for t, v in sorted(self.buckets.items()):
-            o = {k: [x[0], x[1], round(x[2]), round(x[3])] + ([x[4]] if len(x) > 4 and x[4] else []) for k, x in v['o'].items()}
-            f = {k: [x[0], round(x[1])] + ([x[2]] if len(x) > 2 and x[2] else []) for k, x in v['f'].items()}
-            b.append([t, o, f])
+        lcut = time.time() - LKEEP
+        for t in [t for t in self.long if t < lcut]:
+            del self.long[t]
+
+        def pack(src):
+            out = []
+            for t, v in sorted(src.items()):
+                o = {k: [x[0], x[1], round(x[2]), round(x[3])] + ([x[4]] if len(x) > 4 and x[4] else []) for k, x in v['o'].items()}
+                f = {k: [x[0], round(x[1])] + ([x[2]] if len(x) > 2 and x[2] else []) for k, x in v['f'].items()}
+                out.append([t, o, f])
+            return out
+        b = pack(self.buckets)
         hcut = time.time() - HEALTH_KEEP
         self.out = [o for o in self.out if not o[2] or o[2] >= hcut]
-        d = {'v': 2, 'step': STEP, 'since': self.since, 'updated': int(time.time()),
-             'obps': self.obps, 'b': b, 'st': self.st, 'out': self.out, 'hsince': self.hsince}
+        d = {'v': 3, 'step': STEP, 'since': self.since, 'updated': int(time.time()),
+             'obps': self.obps, 'b': b, 'lstep': LSTEP, 'l': pack(self.long), 'st': self.st, 'out': self.out, 'hsince': self.hsince}
         tmp = OUT + '.tmp'
         with open(tmp, 'w', encoding='utf-8') as fh:
             json.dump(d, fh, separators=(',', ':'))
@@ -240,6 +268,69 @@ def telegram(text):
         except Exception as e:
             log('telegram error:', e)
     threading.Thread(target=run, daemon=True).start()
+
+
+WEEKLY = os.environ.get('OBP_WEEKLY', '1') != '0'   # weekly Telegram summary (Monday 09:00 server time)
+WEEK_STATE = BASE + '/data/weekly.json'
+WTXT = {'en': ('Weekly summary', 'calls', 'talk time', 'operators', 'Top talkgroups', 'Top operators', 'OBP links (uptime 7 days)',
+               'TX quenched by BCSQ'),
+        'it': ('Riepilogo settimanale', 'chiamate', 'tempo di parlato', 'operatori', 'Talkgroup più attivi', 'Operatori più attivi',
+               'Collegamenti OBP (disponibilità 7 giorni)', 'TX rifiutati con BCSQ')}.get(ALERT_LANG)
+
+
+def weekly(now):
+    """Once a week (Monday from 09:00, server local time) send a short summary of the last 7 days."""
+    if not WEEKLY or not WTXT or not os.path.exists(TG_CONF):
+        return
+    lt = time.localtime(now)
+    if lt.tm_wday != 0 or lt.tm_hour < 9:
+        return
+    week = time.strftime('%G-%V', lt)
+    try:
+        with open(WEEK_STATE, encoding='utf-8') as fh:
+            if json.load(fh).get('sent') == week:
+                return
+    except Exception:
+        pass
+    with open(WEEK_STATE, 'w', encoding='utf-8') as fh:
+        json.dump({'sent': week}, fh)
+    t0 = now - 7 * 86400
+    tg, cs, n, secs = {}, {}, 0, 0
+    for k, v in S.b.items():
+        if k < t0:
+            continue
+        for g, (c, s) in v['t'].items():
+            a = tg.setdefault(g, [0, 0]); a[0] += c; a[1] += s; n += c; secs += s
+        for c_, x in v['c'].items():
+            a = cs.setdefault(c_, [0, 0]); a[0] += x[0]; a[1] += x[1]
+    txc = qc = 0
+    for t, v in H.long.items():
+        if t >= t0:
+            for x in v['o'].values():
+                txc += x[1]; qc += x[4] if len(x) > 4 else 0
+    W = WTXT
+    lines = ['\U0001F4CA <b>%s · %s</b>' % (SERVER_NAME, W[0]),
+             '%d %s · %s %s · %d %s' % (n, W[1], W[2], dur(secs), len(cs), W[3])]
+    top = sorted(tg.items(), key=lambda x: -x[1][0])[:5]
+    if top:
+        lines += ['', '<b>%s</b>' % W[4]] + ['%d. TG %s · %d' % (i + 1, (g + ' ' + S.tgn.get(g, '')).strip(), c)
+                                             for i, (g, (c, s)) in enumerate(top)]
+    topc = sorted(cs.items(), key=lambda x: -x[1][0])[:5]
+    if topc:
+        lines += ['', '<b>%s</b>' % W[5]] + ['%d. %s · %d' % (i + 1, (c_ + ' ' + S.csn.get(c_, '')).strip(), c)
+                                             for i, (c_, (c, s)) in enumerate(topc)]
+    rows = []
+    for name in sorted(H.obps):
+        start = max(t0, H.hsince)
+        down = sum(max(0, min(b or now, now) - max(a, start)) for o, a, b in H.out if o == name)
+        span = max(1, now - start)
+        rows.append('%s %.1f%%' % (name.replace('OBP-', ''), 100 * (1 - down / span)))
+    if rows:
+        lines += ['', '<b>%s</b>' % W[6], ' · '.join(rows)]
+    if txc + qc:
+        lines += ['', '%s: %d%%' % (W[7], round(100 * qc / (txc + qc)))]
+    telegram('\n'.join(lines))
+    log('weekly summary sent for', week)
 
 
 def health(name, nid, up, now):
@@ -409,6 +500,7 @@ def run_ws():
         if now - last_stats >= 60:
             S.save()
             last_stats = now
+            weekly(now)
 
 
 def stop(*_):

@@ -20,6 +20,6 @@
   };
   window.lsnBtn = function (tg) {
     const t = String(tg || '').replace(/[^0-9]/g, '');
-    return t ? '<button class="lsn" title="Listen on ADN Live" onclick="event.stopPropagation();listenTG(\'' + t + '\')">🎧</button>' : '';
+    return t ? '<button class="lsn" title="' + tt('Listen on ADN Live') + '" onclick="event.stopPropagation();listenTG(\'' + t + '\')">🎧</button>' : '';
   };
 })();

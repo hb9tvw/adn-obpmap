@@ -233,10 +233,10 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:2px 16px 22px}
 
   <div class="card">
     <div class="card-h">
-      <h2>OpenBridge Activity <small>| <span class="rx">RX</span> received ▲ · <span class="tx">TX</span> sent ▼ · <span class="q">BCSQ</span> <span class="q">quenched (already received elsewhere)</span></small></h2>
+      <h2>OpenBridge Activity <small>| <span class="rx">RX</span> received ▲ · <span class="tx">TX</span> sent ▼<span> · </span><span class="q">BCSQ</span> <span class="q">quenched (already received elsewhere)</span></small></h2>
       <div class="ctl">
         <div class="seg" id="metric"><button data-m="n" class="on">Streams</button><button data-m="t">Talk time</button></div>
-        <div class="seg" id="range"><button data-r="900">15 min</button><button data-r="3600" class="on">1 h</button><button data-r="10800">3 h</button><button data-r="21600">6 h</button><button data-r="43200">12 h</button><button data-r="86400">24 h</button></div>
+        <div class="seg" id="range"><button data-r="900">15 min</button><button data-r="3600" class="on">1 h</button><button data-r="10800">3 h</button><button data-r="21600">6 h</button><button data-r="43200">12 h</button><button data-r="86400">24 h</button><button data-r="604800">7 d</button></div>
       </div>
     </div>
     <div class="note" id="actnote">loading history…</div>
@@ -245,7 +245,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:2px 16px 22px}
 
   <div class="card">
     <div class="card-h"><h2>OpenBridge Flows <small>| where each stream came from and where {SRV} forwarded it</small></h2></div>
-    <div class="note">Left: origin (OBP that sent the stream to {SRV}, or local users) · right: OBPs that received it · same time window as above · hover to highlight</div>
+    <div class="note"><span>Left: origin (OBP that sent the stream to {SRV}, or local users)</span> · <span>right: OBPs that received it</span> · <span>same time window as above</span> · <span>hover to highlight</span></div>
     <div id="flows"><div class="mut pad">loading…</div></div>
   </div>
 
@@ -263,7 +263,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:2px 16px 22px}
     </table></div>
   </div>
 </main>
-<footer>{FOOTER}</footer>
+<footer>{FOOTER}<span id="upd"></span></footer>
 
 <script src="config.js?v=1"></script>
 <script src="common.js?v=2"></script>
@@ -318,9 +318,9 @@ const shortId=nid=>{const s=String(nid),L=CFG.labels||{};return L[s]||(s.length=
 const pillW=(txt,home)=>SM?(home?32+7*txt.length:28+6.2*txt.length):(home?48+8.5*txt.length:42+7.5*txt.length);
 function locate(name,nid){
   const s=SAT[nid]; if(s) return {cc:HOME.cc,ll:HOME.ll,country:CFG.country,dir:s.dir,sat:s};
-  const l=LOC[nid]; if(l) return {cc:l[0],ll:[l[1],l[2]],country:l[3],dir:l[4]};
+  const l=LOC[nid]; if(l) return {cc:l[0],ll:[l[1],l[2]],country:ctry(l[0],l[3]),dir:l[4]};
   const m=MCC[String(nid).slice(0,3)];
-  return m?{cc:m[0],ll:[m[1],m[2]],country:m[3],dir:'top'}:null;
+  return m?{cc:m[0],ll:[m[1],m[2]],country:ctry(m[0],m[3]),dir:'top'}:null;
 }
 function pinIcon(cc,txt,cls,d,dir,home){
   const w=pillW(txt,home),hh=home?HPH:PH;
@@ -493,17 +493,19 @@ const fmtD=ts=>new Date(ts*1000).toLocaleString(CFG.locale,{timeZone:CFG.timeZon
 const fmtV=v=>METRIC==='n'?String(Math.round(v)):(v>=3600?(v/3600).toFixed(1)+' h':v>=60?Math.round(v/60)+' min':Math.round(v)+' s');
 const sumA=a=>a.reduce((x,y)=>x+y,0);
 function nodeInfo(name){
-  if(name==='LOCAL') return {cc:HOME.cc,txt:CFG.serverId,label:CFG.serverName+' · local users'};
+  if(name==='LOCAL') return {cc:HOME.cc,txt:CFG.serverId,label:CFG.serverName+' · '+tt('local users')};
   const o=(HI&&HI.obps[name])||{}, loc=locate(name,o.nid);
   return {cc:loc?loc.cc:'un',txt:shortId(o.nid||''),label:(loc?loc.country:name.replace(/^OBP-/,''))+' · '+(o.nid||'?'),up:o.up};
 }
 function series(){
-  const step=HI.step, now=Math.floor(Date.now()/1000/step)*step, n=Math.round(RANGE/step);
+  const LONG=RANGE>86400&&HI.l, B=LONG?HI.l:HI.b;   // 7 days: 10-minute buckets
+  const step=LONG?HI.lstep:HI.step, now=Math.floor(Date.now()/1000/step)*step, n=Math.round(RANGE/step);
   const g=Math.max(1,Math.ceil(n/240)), m=Math.ceil(n/g), t0=now-(n-1)*step, vi=METRIC==='n'?[0,1]:[2,3];
-  const per={}, tot={rx:new Array(m).fill(0),tx:new Array(m).fill(0),q:new Array(m).fill(0)}, flows={}, QN=METRIC==='n';
-  for(const [t,o,f] of HI.b){ if(t<t0||t>now) continue; const i=Math.min(m-1,Math.floor((t-t0)/step/g));
+  const per={}, tot={rx:new Array(m).fill(0),tx:new Array(m).fill(0),q:new Array(m).fill(0),txc:0,qc:0}, flows={}, QN=METRIC==='n';
+  for(const [t,o,f] of B){ if(t<t0||t>now) continue; const i=Math.min(m-1,Math.floor((t-t0)/step/g));
     for(const name in o){const v=o[name];
-      const p=per[name]||(per[name]={rx:new Array(m).fill(0),tx:new Array(m).fill(0),q:new Array(m).fill(0)});
+      const p=per[name]||(per[name]={rx:new Array(m).fill(0),tx:new Array(m).fill(0),q:new Array(m).fill(0),txc:0,qc:0});
+      p.txc+=v[1]; p.qc+=v[4]||0; tot.txc+=v[1]; tot.qc+=v[4]||0;   // counts for the BCSQ share, in both views
       const q=QN?(v[4]||0):0;   // forwards quenched by BCSQ (counts only; they carry no talk time)
       p.rx[i]+=v[vi[0]]; p.tx[i]+=v[vi[1]]; p.q[i]+=q; tot.rx[i]+=v[vi[0]]; tot.tx[i]+=v[vi[1]]; tot.q[i]+=q;}
     for(const k in f){const a=flows[k]||(flows[k]=[0,0,0]);a[0]+=f[k][0];a[1]+=f[k][1];a[2]+=f[k][2]||0;}}
@@ -519,15 +521,18 @@ function mirror(rx,tx,W,Hh,max,q){
     '<line class="ax" x1="0" y1="'+mid+'" x2="'+W+'" y2="'+mid+'"/>'+
     '<path class="l-rx" d="M'+up+'"/><path class="l-tx" d="M'+dn+'"/></svg>';
 }
+// share of forwards quenched by BCSQ: high = the peer gets that traffic another way (redundant link)
+function qShare(txc,qc){ if(!qc) return ''; const p=Math.round(100*qc/(txc+qc));
+  return '<span class="v q" title="'+esc(tt('share of forwards to this OBP quenched by BCSQ'))+': '+qc+' / '+(txc+qc)+'">BCSQ '+p+'%</span>';}
 function spin(ni,off){return '<span class="spin'+(off?' off':'')+'"><img src="'+flagUrl(ni.cc)+'" alt="">'+esc(ni.txt)+'</span>';}
 function drawHist(){
   if(!HI) return; const S=series(), bs=S.g*S.step;
-  $('actnote').textContent='Height = '+(METRIC==='n'?'number of streams':'talk time')+' per '+(bs>=60?(bs/60)+' min':bs+' s')+
-    ' · each OBP on its own scale · recording since '+fmtD(HI.since)+' · updated '+fmtT(HI.updated);
+  $('actnote').textContent=tt(METRIC==='n'?'Height = number of streams per':'Height = talk time per')+' '+(bs>=3600?(bs/3600)+' h':bs>=60?(bs/60)+' min':bs+' s')+
+    ' · '+tt('each OBP on its own scale')+' · '+tt('recording since')+' '+fmtD(HI.since)+' · '+tt('updated')+' '+fmtT(HI.updated);
   const max=Math.max(1,...S.tot.rx,...S.tot.tx.map((v,i)=>v+S.tot.q[i])), qn=sumA(S.tot.q);
-  let ticks=''; for(let i=0;i<=5;i++){const p=i/5; ticks+='<span style="left:'+(p*100)+'%">'+fmtT(S.t0+p*(S.now-S.t0))+'</span>';}
-  let html='<div class="net"><div class="net-h"><b>Whole network</b><span class="rx">RX '+fmtV(sumA(S.tot.rx))+'</span><span class="tx">TX '+fmtV(sumA(S.tot.tx))+'</span>'+(qn?'<span class="q" title="forwards quenched by BCSQ: the other server already had the stream">BCSQ '+fmtV(qn)+'</span>':'')+
-    '<span class="mut" style="margin-left:auto;font-size:12px">peak '+fmtV(max)+'</span></div><div class="net-c" id="netc">'+mirror(S.tot.rx,S.tot.tx,1000,150,max,S.tot.q)+
+  let ticks=''; for(let i=0;i<=5;i++){const p=i/5; ticks+='<span style="left:'+(p*100)+'%">'+(RANGE>86400?fmtD:fmtT)(S.t0+p*(S.now-S.t0))+'</span>';}
+  let html='<div class="net"><div class="net-h"><b>Whole network</b><span class="rx">RX '+fmtV(sumA(S.tot.rx))+'</span><span class="tx">TX '+fmtV(sumA(S.tot.tx))+'</span>'+(S.tot.qc?'<span class="q" title="'+esc(tt('forwards quenched by BCSQ: the other server already had the stream'))+': '+S.tot.qc+' / '+(S.tot.txc+S.tot.qc)+'">BCSQ '+Math.round(100*S.tot.qc/(S.tot.txc+S.tot.qc))+'%</span>':'')+
+    '<span class="mut" style="margin-left:auto;font-size:12px">'+tt('peak')+' '+fmtV(max)+'</span></div><div class="net-c" id="netc">'+mirror(S.tot.rx,S.tot.tx,1000,150,max,S.tot.q)+
     '<div class="hl" id="hl"></div><div class="hv" id="hv"></div></div><div class="ticks">'+ticks+'</div></div>';
   const names=Object.keys(HI.obps); Object.keys(S.per).forEach(n=>{if(!names.includes(n))names.push(n);});
   const act=n=>S.per[n]?sumA(S.per[n].rx)+sumA(S.per[n].tx):0;
@@ -536,21 +541,21 @@ function drawHist(){
   for(const n of names){const p=S.per[n]||{rx:new Array(S.m).fill(0),tx:new Array(S.m).fill(0),q:new Array(S.m).fill(0)}, ni=nodeInfo(n);
     const pm=Math.max(1,...p.rx,...p.tx.map((v,i)=>v+p.q[i])), r=sumA(p.rx), t=sumA(p.tx), qq=sumA(p.q);
     html+='<div class="oc'+(r+t?'':' idle')+'"><div class="oc-h">'+spin(ni,ni.up===false)+'<span class="nm" title="'+esc(n)+'">'+esc(ni.label)+
-      '</span><span class="v rx">RX '+fmtV(r)+'</span><span class="v tx">TX '+fmtV(t)+'</span>'+(qq?'<span class="v q" title="quenched by BCSQ">BCSQ '+fmtV(qq)+'</span>':'')+'</div><div class="oc-c">'+mirror(p.rx,p.tx,600,58,pm,p.q)+'</div></div>';}
+      '</span><span class="v rx">RX '+fmtV(r)+'</span><span class="v tx">TX '+fmtV(t)+'</span>'+qShare(p.txc||0,p.qc||0)+'</div><div class="oc-c">'+mirror(p.rx,p.tx,600,58,pm,p.q)+'</div></div>';}
   $('act').innerHTML=html+'</div>';
   const c=$('netc'); c.onmousemove=e=>{const r=c.getBoundingClientRect(),fx=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),i=Math.round(fx*(S.m-1));
     const x=(S.m<2?0:i/(S.m-1))*r.width; $('hl').style.display='block'; $('hl').style.left=x+'px';
-    const hv=$('hv'); hv.style.display='block'; hv.innerHTML=fmtT(S.t0+i*bs)+' · <span class="rx">RX '+fmtV(S.tot.rx[i])+'</span> · <span class="tx">TX '+fmtV(S.tot.tx[i])+'</span>'+(S.tot.q[i]?' · <span class="q">BCSQ '+fmtV(S.tot.q[i])+'</span>':'');
+    const hv=$('hv'); hv.style.display='block'; hv.innerHTML=(RANGE>86400?fmtD:fmtT)(S.t0+i*bs)+' · <span class="rx">RX '+fmtV(S.tot.rx[i])+'</span> · <span class="tx">TX '+fmtV(S.tot.tx[i])+'</span>'+(S.tot.q[i]?' · <span class="q">BCSQ '+fmtV(S.tot.q[i])+'</span>':'');
     hv.style.left=Math.min(Math.max(0,x-hv.offsetWidth/2),r.width-hv.offsetWidth)+'px';};
   c.onmouseleave=()=>{$('hl').style.display='none';$('hv').style.display='none';};
   drawFlows(S);
 }
 function drawFlows(S){
   const ks=Object.keys(S.flows), vi=METRIC==='n'?0:1;
-  if(!ks.length){$('flows').innerHTML='<div class="mut pad">No forwarded traffic recorded in this time window yet.</div>';return;}
+  if(!ks.length){$('flows').innerHTML='<div class="mut pad">'+tt('No forwarded traffic recorded in this time window yet.')+'</div>';return;}
   const L={},Rr={}; let total=0;
   ks.forEach(k=>{const [a,b]=k.split('>'),v=S.flows[k][vi]||0; L[a]=(L[a]||0)+v; Rr[b]=(Rr[b]||0)+v; total+=v;});
-  if(!total){$('flows').innerHTML='<div class="mut pad">No forwarded traffic recorded in this time window yet.</div>';return;}
+  if(!total){$('flows').innerHTML='<div class="mut pad">'+tt('No forwarded traffic recorded in this time window yet.')+'</div>';return;}
   const ln=Object.keys(L).sort((a,b)=>L[b]-L[a]), rn=Object.keys(Rr).sort((a,b)=>Rr[b]-Rr[a]);
   const W=1000, top=46, nh=Math.max(ln.length,rn.length), Hh=Math.max(300,nh*40+top+20), gap=10;
   const xL=250, xR=738, bw=12;
@@ -583,10 +588,17 @@ function drawFlows(S){
       sv.querySelectorAll('.rb').forEach(r=>r.classList.toggle('hi',(!a||r.getAttribute('data-a')===a)&&(!b||r.getAttribute('data-b')===b)));});
     el.addEventListener('mouseleave',()=>sv.classList.remove('dim'));});
 }
+// small notice in the footer when GitHub has a newer version (config: updateCheck: false to switch it off)
+if(CFG.updateCheck!==false) Promise.all([fetch('version.txt',{cache:'no-store'}).then(r=>r.ok?r.text():''),
+  fetch('https://raw.githubusercontent.com/hb9tvw/adn-obpmap/main/VERSION',{cache:'no-store'}).then(r=>r.ok?r.text():'')]).then(([a,b])=>{
+  a=a.trim(); b=b.trim(); const n=s=>s.split('.').map(x=>+x||0), A=n(a), Bv=n(b);
+  if(a&&b&&/^\d+\.\d+\.\d+$/.test(a)&&(Bv[0]-A[0]||Bv[1]-A[1]||Bv[2]-A[2])>0)
+    $('upd').innerHTML=' · <a href="https://github.com/hb9tvw/adn-obpmap/blob/main/CHANGELOG.md" target="_blank" rel="noopener" style="color:var(--amber)">'+esc(tt('new version available'))+' '+esc(b)+'</a>';
+}).catch(()=>{});
 function loadHist(){
   fetch('data/history.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
     .then(d=>{HI=d;drawHist();})
-    .catch(()=>{if(!HI){$('actnote').textContent='History not available yet (recorder not running).';$('flows').innerHTML='<div class="mut pad">History not available yet.</div>';}});
+    .catch(()=>{if(!HI){$('actnote').textContent=tt('History not available yet (recorder not running).');$('flows').innerHTML='<div class="mut pad">History not available yet.</div>';}});
 }
 function segs(id,attr,set){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{set(b.dataset[attr]);
   document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.toggle('on',x===b));drawHist();});}
